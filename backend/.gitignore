@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env
+venv/
+
+# OS
+.DS_Store
+
+# Local data
+data/
+
+# Logs
+logs/
+
+# Secrets/configs
+config/*.json
+.env

@@ -1,0 +1,30 @@
+.
+├── ai
+│   └── gpt_handler.py
+├── backend_structure.txt
+├── config
+│   ├── spotify_config.json
+│   ├── spotify_config.jsonc
+│   └── tapo_config.json
+├── main.py
+├── models
+│   └── Hey-Aura_en_mac_v3_0_0
+│       ├── Hey-Aura_en_mac_v3_0_0.ppn
+│       └── LICENSE.txt
+├── requirements.txt
+├── server
+│   └── ws_server.py
+├── services
+│   ├── memory_store.py
+│   ├── music_spotify.py
+│   ├── music_spotify.py.save
+│   ├── smart_home.py
+│   └── tapo_light.py
+├── stt
+│   └── whisper_stt.py
+├── tts
+│   └── tts_handler.py
+└── wake
+    └── wake_word.py
+
+10 directories, 18 files
