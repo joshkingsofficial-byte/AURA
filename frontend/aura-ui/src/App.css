@@ -1,0 +1,141 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* === ROOT VARIABLES === */
+:root {
+  --mirror-bg: #0b0b0f;
+  --glow-cyan: rgba(96, 210, 255, 0.4);
+  --glow-purple: rgba(168, 85, 247, 0.3);
+}
+
+/* === BACKGROUND === */
+.bg-mirrorBg {
+  background: radial-gradient(
+      1200px 800px at 50% 50%,
+      rgba(40, 30, 60, 0.25),
+      transparent 60%
+    ),
+    linear-gradient(180deg, #0b0b0f 0%, #0a0a0d 100%);
+}
+
+/* === GLASS CARDS === */
+.glass {
+  background: rgba(8, 8, 12, 0.75);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* === VOICE RING ANIMATIONS === */
+.voice-ring-idle {
+  box-shadow: 0 0 40px var(--glow-cyan);
+  transition: box-shadow 0.3s ease;
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 40px var(--glow-cyan), 0 0 60px var(--glow-purple);
+  }
+  50% {
+    box-shadow: 0 0 70px var(--glow-cyan), 0 0 90px var(--glow-purple);
+  }
+  100% {
+    box-shadow: 0 0 40px var(--glow-cyan), 0 0 60px var(--glow-purple);
+  }
+}
+
+.voice-ring-listening {
+  animation: pulse-ring 1.2s ease-in-out infinite;
+}
+
+/* === SOFT GLOW EFFECT === */
+.shadow-soft-glow {
+  box-shadow: inset 0 0 40px rgba(96, 210, 255, 0.15),
+    0 0 60px rgba(96, 210, 255, 0.2);
+}
+
+/* === FADE IN ANIMATION === */
+.fade-in {
+  animation: fade-in 0.35s ease-out forwards;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* === BREATHING GLOW (for idle background) === */
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.05);
+  }
+}
+
+.animate-breathe {
+  animation: breathe 4s ease-in-out infinite;
+}
+
+/* === SMOOTH TRANSITIONS === */
+* {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* === SCROLLBAR STYLING (optional, for future widgets) === */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* === TYPOGRAPHY === */
+.font-display {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  font-weight: 200;
+  letter-spacing: -0.02em;
+}
+
+/* === UTILITY: TEXT GLOW === */
+.text-glow {
+  text-shadow: 0 0 20px rgba(96, 210, 255, 0.6);
+}
+
+/* === SPOTIFY MINI WIDGET HOVER (optional) === */
+.glass:hover {
+  background: rgba(8, 8, 12, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+/* === WEATHER CARD STYLING === */
+.weather-icon {
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+}

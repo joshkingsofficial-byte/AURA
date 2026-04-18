@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global mirror styling */
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply bg-black text-white m-0 overflow-hidden;
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+/* Smooth fade transitions */
+.fade-in {
+  animation: fade-in 0.35s ease-out forwards;
+}
+
+.fade-out {
+  animation: fade-out 0.25s ease-in forwards;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(4px); }
+}
+
+/* Glow ring animation */
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 40px rgba(96, 210, 255, 0.3); }
+  50%  { box-shadow: 0 0 70px rgba(96, 210, 255, 0.7); }
+  100% { box-shadow: 0 0 40px rgba(96, 210, 255, 0.3); }
+}
+
+.voice-ring-idle {
+  box-shadow: 0 0 40px rgba(96, 210, 255, 0.25);
+}
+
+.voice-ring-listening {
+  animation: pulse-ring 1.2s ease-in-out infinite;
+}
+
+/* Spotlight “beam” */
+.spotlight-beam {
+  filter: blur(16px);
+}
+
+/* Glassy cards */
+.glass {
+  background: rgba(8, 8, 12, 0.75);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
