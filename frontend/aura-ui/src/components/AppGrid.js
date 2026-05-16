@@ -14,6 +14,7 @@ function AppGrid({ onAppClick }) {
     { id: 'photos', name: 'Photos', icon: '📸', color: 'from-purple-500 to-pink-500' },
     { id: 'memory', name: 'Memory', icon: '💭', color: 'from-violet-500 to-purple-700' },
     { id: 'calendar', name: 'Calendar', icon: '📅', color: 'from-blue-500 to-indigo-600' },
+    { id: 'email', name: 'EMAIL', color: '' },
     { id: 'settings', name: 'Settings', icon: '⚙️', color: 'from-gray-500 to-gray-700' },
   ];
 

@@ -16,6 +16,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 
 from server.ws_server import WebSocketServer
+from server.http_server import start_http_server
 from wake.wake_word import WakeWordListener
 from stt.whisper_stt import record_audio, transcribe_audio
 from tts.tts_handler import synthesize_speech
@@ -39,7 +40,7 @@ NAV_PHRASES = [
     "open spotify", "open youtube", "open weather", "open lights", "open light",
     "open news", "open recipe", "open recipes", "open notes", "open to do",
     "open memory", "open timer", "open alarm", "open photos", "open calendar",
-    "open settings",
+    "open email", "open settings",
 "go to apps", "show apps", "open apps", "show me apps", "go to the apps"
 ]
 
@@ -226,6 +227,12 @@ async def initialize():
     ws_server = WebSocketServer(host="0.0.0.0", port=8765)
     await ws_server.start()
     print("[✓] WebSocket server started on port 8765")
+
+    # =========================================================================
+    # 1.5) HTTP server for REST endpoints
+    # =========================================================================
+    await start_http_server()
+    print("[✓] HTTP server started on port 8766")
 
     # =========================================================================
     # 2) Smart home client (offline stub for now)

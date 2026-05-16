@@ -10,6 +10,7 @@ import MemoryApp from '../apps/MemoryApp';
 import TimerApp from '../apps/TimerApp';
 import PhotosApp from '../apps/PhotosApp';
 import CalendarApp from '../apps/CalendarApp';
+import EmailApp from '../apps/EmailApp';
 import SettingsApp from '../apps/SettingsApp';
 
 function AppView({ appName, spotifyData, onBack }) {
@@ -38,6 +39,8 @@ function AppView({ appName, spotifyData, onBack }) {
         return <PhotosApp />;
       case 'calendar':
         return <CalendarApp />;
+      case 'email':
+        return <EmailApp />;
       case 'settings':
         return <SettingsApp />;
       default:

@@ -89,6 +89,7 @@ export default function App() {
     if (norm.includes("open news"))     { setCurrentApp("news");     setScreen("app"); return; }
     if (norm.includes("open recipe") || norm.includes("open recipes")) { setCurrentApp("recipe"); setScreen("app"); return; }
     if (norm.includes("open memory"))   { setCurrentApp("memory");   setScreen("app"); return; }
+    if (norm.includes("open email"))    { setCurrentApp("email");    setScreen("app"); return; }
     if (norm.includes("open settings")) { setCurrentApp("settings"); setScreen("app"); return; }
   };
 
