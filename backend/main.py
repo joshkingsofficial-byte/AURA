@@ -39,7 +39,8 @@ NAV_PHRASES = [
     "open spotify", "open youtube", "open weather", "open lights", "open light",
     "open news", "open recipe", "open recipes", "open notes", "open to do",
     "open memory", "open timer", "open alarm", "open photos", "open calendar",
-    "open settings"
+    "open settings",
+"go to apps", "show apps", "open apps", "show me apps", "go to the apps"
 ]
 
 
