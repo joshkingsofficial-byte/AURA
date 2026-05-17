@@ -1,6 +1,7 @@
 import json
 from aiohttp import web
 from services.gmail_service import get_unread_emails
+from services.calendar_service import get_upcoming_events, get_todays_events
 
 async def handle_emails(request):
     emails = get_unread_emails(10)
@@ -10,9 +11,27 @@ async def handle_emails(request):
         headers={'Access-Control-Allow-Origin': '*'}
     )
 
+async def handle_calendar(request):
+    events = get_upcoming_events(10)
+    return web.Response(
+        text=json.dumps(events),
+        content_type='application/json',
+        headers={'Access-Control-Allow-Origin': '*'}
+    )
+
+async def handle_today(request):
+    events = get_todays_events()
+    return web.Response(
+        text=json.dumps(events),
+        content_type='application/json',
+        headers={'Access-Control-Allow-Origin': '*'}
+    )
+
 async def start_http_server():
     app = web.Application()
     app.router.add_get('/emails', handle_emails)
+    app.router.add_get('/calendar', handle_calendar)
+    app.router.add_get('/today', handle_today)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, 'localhost', 8766)

@@ -7,7 +7,7 @@ from googleapiclient.discovery import build
 import base64
 import email
 
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/calendar.readonly']
 CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), '..', 'gmail_credentials.json')
 TOKEN_FILE = os.path.join(os.path.dirname(__file__), '..', 'gmail_token.pickle')
 
