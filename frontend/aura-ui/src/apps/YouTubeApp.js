@@ -55,6 +55,7 @@ function YouTubeApp({ onBack }) {
       }
       setPlayerReady(false);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Create player with a specific videoId (called on first selection) ───────
@@ -113,9 +114,13 @@ function YouTubeApp({ onBack }) {
   const handleGesture = useCallback((gesture) => {
     switch (gesture) {
       case 'fist':
-        isPlayingRef.current
-          ? (playerRef.current?.pauseVideo(), console.log('✊ Pause'))
-          : (playerRef.current?.playVideo(),  console.log('✊ Play'));
+        if (isPlayingRef.current) {
+          playerRef.current?.pauseVideo();
+          console.log('✊ Pause');
+        } else {
+          playerRef.current?.playVideo();
+          console.log('✊ Play');
+        }
         break;
       case 'point_up': {
         const v = Math.min(100, volumeRef.current + 10);
