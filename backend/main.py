@@ -111,6 +111,7 @@ async def handle_youtube_message(msg: dict):
         try:
             import urllib.request
             import urllib.parse
+            import urllib.error
             import json as _json
 
             params = urllib.parse.urlencode({
@@ -123,8 +124,16 @@ async def handle_youtube_message(msg: dict):
             url = f"https://www.googleapis.com/youtube/v3/search?{params}"
 
             def _fetch():
-                with urllib.request.urlopen(url, timeout=10) as r:
-                    return _json.loads(r.read())
+                try:
+                    with urllib.request.urlopen(url, timeout=10) as r:
+                        return _json.loads(r.read())
+                except urllib.error.HTTPError as e:
+                    body = e.read().decode("utf-8", errors="replace")
+                    try:
+                        detail = _json.loads(body)["error"]["message"]
+                    except Exception:
+                        detail = body[:300]
+                    raise Exception(f"HTTP {e.code}: {detail}")
 
             data = await asyncio.to_thread(_fetch)
 
