@@ -10,7 +10,7 @@ function HomePage({ onAppClick, selectedAppIndex, selectionMode }) {
     <div
       className="relative min-h-screen overflow-hidden"
       style={{
-        background: 'radial-gradient(ellipse at 50% 60%, #1a0a2e 0%, #0d0515 40%, #080010 100%)'
+        background: '#000000'
       }}
     >
       {/* Ambient glow */}
@@ -113,13 +113,6 @@ function HomePage({ onAppClick, selectedAppIndex, selectionMode }) {
         </div>
       </div>
 
-      {/* CSS Animation */}
-      <style>{`
-        @keyframes auraPulse {
-          0%, 100% { opacity: 0.7; }
-          50% { opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }

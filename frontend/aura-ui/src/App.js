@@ -3,12 +3,12 @@ import "./App.css";
 import IdleScreen from "./screens/IdleScreen";
 import HomePage from "./screens/HomePage";
 import AppView from "./screens/AppView";
+import WidgetOverlay from "./components/WidgetOverlay";
 import { APPS } from "./components/AppGrid";
 
 const WS_URL = "ws://localhost:8765";
 
 function useAuraSocket(onMessage) {
-  const [status, setStatus] = useState("disconnected");
   const wsRef = useRef(null);
   const onMessageRef = useRef(onMessage);
 
@@ -20,14 +20,10 @@ function useAuraSocket(onMessage) {
     let timer;
     const connect = () => {
       if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) return;
-      setStatus("connecting");
       const ws = new WebSocket(WS_URL);
       wsRef.current = ws;
-      ws.onopen = () => setStatus("connected");
-      ws.onclose = () => {
-        setStatus("disconnected");
-        timer = setTimeout(connect, 3000);
-      };
+      ws.onopen = () => {};
+      ws.onclose = () => { timer = setTimeout(connect, 3000); };
       ws.onerror = () => {};
       ws.onmessage = (e) => {
         try {
@@ -46,7 +42,7 @@ function useAuraSocket(onMessage) {
     };
   }, []);
 
-  return { status, wsRef };
+  return { wsRef };
 }
 
 export default function App() {
@@ -104,7 +100,7 @@ export default function App() {
     if (norm.includes("open settings")) { setCurrentApp("settings"); setScreen("app"); return; }
   };
 
-  const { status, wsRef } = useAuraSocket((msg) => {
+  const { wsRef } = useAuraSocket((msg) => {
     switch (msg.type) {
       case "wake_detected":
       case "wake":
@@ -254,41 +250,40 @@ export default function App() {
     );
   };
 
-  if (screen === "home") {
-    return (
-      <div className="min-h-screen bg-black text-white">
-        <HomePage
-            onAppClick={(id) => { setCurrentApp(id); setScreen("app"); setSelectionMode(false); }}
-            selectedAppIndex={selectedAppIndex}
-            selectionMode={selectionMode}
-          />
-        <DevButton />
-      </div>
-    );
-  }
+  return (
+    <div className="min-h-screen bg-black text-white" style={{ position: 'relative' }}>
+      <WidgetOverlay
+        isListening={isListening}
+        isThinking={isThinking}
+        spotifyData={spotifyData}
+        screen={screen}
+      />
 
-  if (screen === "app") {
-    return (
-      <div className="min-h-screen bg-black text-white">
+      {screen === "idle" && (
+        <IdleScreen
+          isListening={isListening}
+          isThinking={isThinking}
+          transcript={transcript}
+          reply={reply}
+        />
+      )}
+
+      {screen === "home" && (
+        <HomePage
+          onAppClick={(id) => { setCurrentApp(id); setScreen("app"); setSelectionMode(false); }}
+          selectedAppIndex={selectedAppIndex}
+          selectionMode={selectionMode}
+        />
+      )}
+
+      {screen === "app" && (
         <AppView
           appName={currentApp}
           spotifyData={spotifyData}
           onBack={() => { setCurrentApp(null); setScreen("home"); }}
         />
-        <DevButton />
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div className="min-h-screen bg-black text-white">
-      <IdleScreen
-        isListening={isListening}
-        isThinking={isThinking}
-        transcript={transcript}
-        reply={reply}
-        spotifyData={spotifyData}
-      />
       <DevButton />
     </div>
   );
