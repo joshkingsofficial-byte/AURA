@@ -262,16 +262,12 @@ function YouTubeApp({ onBack }) {
           overflow: 'hidden',
           border: videoId ? '1px solid rgba(200,169,110,0.3)' : '1px solid rgba(255,255,255,0.06)',
         }}>
-          {/* Player div — always present so IFrame API can target it */}
+          {/* Player div — always visible so IFrame initialises with correct dimensions */}
           <div
             id="yt-player"
-            style={{
-              position: 'absolute', inset: 0,
-              width: '100%', height: '100%',
-              display: videoId ? 'block' : 'none',
-            }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
           />
-          {/* Placeholder shown until a video is chosen */}
+          {/* Placeholder overlay — sits on top until a video is chosen */}
           {!videoId && (
             <div style={{
               position: 'absolute', inset: 0,
