@@ -12,6 +12,7 @@ import PhotosApp from '../apps/PhotosApp';
 import CalendarApp from '../apps/CalendarApp';
 import EmailApp from '../apps/EmailApp';
 import SettingsApp from '../apps/SettingsApp';
+import VisionApp from '../apps/VisionApp';
 
 function AppView({ appName, spotifyData, onBack }) {
   
@@ -43,6 +44,8 @@ function AppView({ appName, spotifyData, onBack }) {
         return <EmailApp />;
       case 'settings':
         return <SettingsApp />;
+      case 'vision':
+        return <VisionApp onBack={onBack} />;
       default:
         return (
           <div className="text-white text-center">

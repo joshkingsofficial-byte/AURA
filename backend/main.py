@@ -43,7 +43,7 @@ NAV_PHRASES = [
     "open spotify", "open youtube", "open weather", "open lights", "open light",
     "open news", "open recipe", "open recipes", "open notes", "open to do",
     "open memory", "open timer", "open alarm", "open photos", "open calendar",
-    "open email", "open settings",
+    "open email", "open settings", "open vision",
     "go to apps", "show apps", "open apps", "show me apps", "go to the apps",
     "whats the weather", "what's the weather", "show me the weather", "open weather", "check the weather",
     "check my emails", "read my emails", "open my emails", "show my emails", "any emails", "any important emails",
@@ -51,6 +51,49 @@ NAV_PHRASES = [
     "whats the news", "what's the news", "show me the news", "open news", "latest news",
     "show me the briefing",
 ]
+
+
+# Voice phrases that trigger vision analysis instead of GPT text
+VISION_PHRASES = [
+    "what is this", "what's this", "whats this",
+    "identify this", "identify this object",
+    "what do you see", "what can you see",
+    "look at this", "analyze this", "scan this",
+    "what am i holding", "what's in front of you",
+    "describe what you see", "tell me about this",
+]
+
+
+async def handle_vision_query(msg: dict):
+    """Handle vision_query WebSocket messages (image captured by frontend)."""
+    global ws_server
+
+    query = msg.get("query", "What is this? Describe what you see in detail.")
+    image_b64 = msg.get("image")
+
+    print(f"[Vision] Query: '{query}' | image={'yes' if image_b64 else 'no'}")
+    await ws_server.broadcast({"type": "vision_analyzing"})
+
+    try:
+        from vision.vision_engine import analyze_b64, capture_frame, analyze
+
+        if image_b64:
+            result = await analyze_b64(image_b64, query)
+        else:
+            frame = await asyncio.to_thread(capture_frame)
+            if frame is None:
+                result = "I couldn't access the camera. Make sure the camera is connected."
+            else:
+                result = await analyze(frame, query)
+
+        print(f"[Vision] Result: {result[:80]}...")
+    except Exception as e:
+        print(f"[Vision] Error: {e}")
+        result = f"Vision analysis error: {e}"
+
+    await ws_server.broadcast({"type": "vision_result", "text": result, "query": query})
+    synthesize_speech(result)
+    await ws_server.broadcast({"type": "done"})
 
 
 async def handle_light_control(msg: dict):
@@ -261,6 +304,20 @@ async def process_transcript_async(text: str):
             print(f"[EMAIL] Failed: {e}")
 
     # =========================================================================
+    # VISION: "what is this?" / "identify this" / etc.
+    # =========================================================================
+    if any(p in lower for p in VISION_PHRASES):
+        print(f"[Vision] Voice trigger: '{text}'")
+        # Navigate to vision app, then ask frontend to capture a frame
+        await ws_server.broadcast({"type": "navigate", "target": "app", "app": "vision"})
+        # Brief pause so the app mounts and its camera starts before vision_request arrives
+        await asyncio.sleep(1.5)
+        await ws_server.broadcast({"type": "vision_request", "query": text})
+        # Result path is handled in handle_vision_query when frontend sends vision_query back
+        await ws_server.broadcast({"type": "done"})
+        return
+
+    # =========================================================================
     # LIGHTS
     # =========================================================================
     light_on_keys = ["turn on the light", "turn on lights", "lights on", "switch on the light"]
@@ -337,6 +394,8 @@ async def process_transcript_async(text: str):
             await ws_server.broadcast({"type": "navigate", "target": "app", "app": "email"})
         elif "open settings" in lower:
             await ws_server.broadcast({"type": "navigate", "target": "app", "app": "settings"})
+        elif "open vision" in lower:
+            await ws_server.broadcast({"type": "navigate", "target": "app", "app": "vision"})
         elif "show me the briefing" in lower:
             await ws_server.broadcast({"type": "navigate", "target": "app", "app": "briefing"})
 
@@ -459,6 +518,7 @@ async def initialize():
     ws_server.set_message_handler(process_transcript_async)
     ws_server.set_light_control_handler(handle_light_control)
     ws_server.set_youtube_handler(handle_youtube_message)
+    ws_server.set_vision_handler(handle_vision_query)
     print("[✓] WebSocket server started on port 8765")
 
     # =========================================================================

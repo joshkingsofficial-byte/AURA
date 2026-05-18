@@ -15,6 +15,7 @@ export const APPS = [
   { id: 'calendar', name: 'Calendar', icon: '📅', color: 'from-blue-500 to-indigo-600' },
   { id: 'email',    name: 'Email',    icon: '✉️', color: 'from-sky-500 to-blue-600' },
   { id: 'settings', name: 'Settings', icon: '⚙️', color: 'from-gray-500 to-gray-700' },
+  { id: 'vision',   name: 'Vision',   icon: '👁', color: 'from-amber-500 to-yellow-600' },
 ];
 
 function AppGrid({ onAppClick, selectedAppIndex, selectionMode }) {
