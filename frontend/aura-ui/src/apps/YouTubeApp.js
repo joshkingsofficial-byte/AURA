@@ -58,6 +58,18 @@ function YouTubeApp({ onBack }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Force the iframe YouTube injects to fill its container ─────────────────
+  const forceIframeVisible = () => {
+    const iframe = document.querySelector('#yt-player iframe');
+    if (!iframe) return;
+    iframe.style.cssText = [
+      'position:absolute', 'top:0', 'left:0',
+      'width:100%', 'height:100%',
+      'display:block', 'visibility:visible',
+      'opacity:1', 'z-index:1',
+    ].join(';');
+  };
+
   // ── Create player with a specific videoId (called on first selection) ───────
   const createPlayer = useCallback((vid) => {
     const el = document.getElementById('yt-player');
@@ -77,13 +89,15 @@ function YouTubeApp({ onBack }) {
         onReady: (e) => {
           e.target.setVolume(volumeRef.current);
           setPlayerReady(true);
+          forceIframeVisible();
         },
         onStateChange: (e) => {
           setIsPlaying(e.data === window.YT.PlayerState.PLAYING);
+          forceIframeVisible();
         },
       },
     });
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Gesture / WS control ───────────────────────────────────────────────────
   const applyControl = useCallback((action, value) => {
@@ -252,28 +266,34 @@ function YouTubeApp({ onBack }) {
         </p>
       )}
 
-      {/* Player — placeholder until a video is selected */}
+      {/* Player */}
       <div style={{ marginBottom: '16px' }}>
         <div style={{
           position: 'relative',
           paddingTop: '56.25%',
+          minHeight: '360px',
           background: '#000',
           borderRadius: '12px',
           overflow: 'hidden',
           border: videoId ? '1px solid rgba(200,169,110,0.3)' : '1px solid rgba(255,255,255,0.06)',
         }}>
-          {/* Player div — always visible so IFrame initialises with correct dimensions */}
+          {/* Player target — always rendered at full size so IFrame gets correct dimensions */}
           <div
             id="yt-player"
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+            style={{
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%',
+              zIndex: 1,
+            }}
           />
-          {/* Placeholder overlay — sits on top until a video is chosen */}
+          {/* Placeholder — z-index 2 so it sits above the empty player, pointer-events none so clicks pass through once video loads */}
           {!videoId && (
             <div style={{
               position: 'absolute', inset: 0,
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
               gap: '12px', pointerEvents: 'none',
+              zIndex: 2,
             }}>
               <span style={{ fontSize: '52px', opacity: 0.18 }}>📺</span>
               <span style={{ fontSize: '12px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.15)', fontWeight: 200 }}>
