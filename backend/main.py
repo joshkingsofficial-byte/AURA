@@ -363,7 +363,7 @@ async def initialize():
     # 2.5) Gesture control (camera + hand tracking)
     # =========================================================================
     try:
-        gesture_bridge = GestureBridge(websocket_handler=ws_server.broadcast)
+        gesture_bridge = GestureBridge(websocket_handler=ws_server.broadcast, loop=main_loop)
         if gesture_bridge.initialize():
             gesture_bridge.start()
             print("[✓] Gesture control started (camera + hand tracking)")

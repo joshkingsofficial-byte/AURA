@@ -9,8 +9,9 @@ from camera_manager import CameraManager
 from gesture_detector import GestureDetector, Gesture, GESTURE_TO_COMMAND
 
 class GestureBridge:
-    def __init__(self, websocket_handler=None):
+    def __init__(self, websocket_handler=None, loop=None):
         self.websocket_handler = websocket_handler
+        self.loop = loop
         self.camera = None
         self.detector = None
         self.is_active = False
@@ -54,5 +55,8 @@ class GestureBridge:
             "gesture": gesture.value,
             "command": command
         }
-        if self.websocket_handler:
-            self.websocket_handler("gesture_detected", event_data)
+        if self.websocket_handler and self.loop:
+            asyncio.run_coroutine_threadsafe(
+                self.websocket_handler(event_data),
+                self.loop
+            )
