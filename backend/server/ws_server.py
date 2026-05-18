@@ -12,12 +12,16 @@ class WebSocketServer:
         self.server = None
         self.message_handler = None
         self.light_control_handler = None
+        self.youtube_handler = None
 
     def set_message_handler(self, handler):
         self.message_handler = handler
 
     def set_light_control_handler(self, handler):
         self.light_control_handler = handler
+
+    def set_youtube_handler(self, handler):
+        self.youtube_handler = handler
 
     async def handler(self, websocket):
         client_info = f"{websocket.remote_address}"
@@ -36,6 +40,8 @@ class WebSocketServer:
                         await self.message_handler(text)
                 elif msg_type == "light_control" and self.light_control_handler:
                     await self.light_control_handler(msg)
+                elif msg_type in ("youtube_search", "youtube_control") and self.youtube_handler:
+                    await self.youtube_handler(msg)
         except websockets.exceptions.ConnectionClosed:
             print(f"[WS] Client disconnected: {client_info}")
         finally:

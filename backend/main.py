@@ -88,6 +88,74 @@ async def handle_light_control(msg: dict):
         print(f"[Tapo] Light control error: {e}")
 
 
+async def handle_youtube_message(msg: dict):
+    """Handle youtube_search and youtube_control WebSocket messages."""
+    global ws_server
+    msg_type = msg.get("type")
+
+    if msg_type == "youtube_search":
+        query = msg.get("query", "").strip()
+        if not query:
+            return
+        print(f"[YouTube] Search: '{query}'")
+
+        api_key = os.getenv("YOUTUBE_API_KEY")
+        if not api_key:
+            await ws_server.broadcast({
+                "type": "youtube_search_results",
+                "results": [],
+                "error": "YouTube API key not configured — add YOUTUBE_API_KEY to .env",
+            })
+            return
+
+        try:
+            import urllib.request
+            import urllib.parse
+            import json as _json
+
+            params = urllib.parse.urlencode({
+                "part": "snippet",
+                "q": query,
+                "maxResults": 9,
+                "type": "video",
+                "key": api_key,
+            })
+            url = f"https://www.googleapis.com/youtube/v3/search?{params}"
+
+            def _fetch():
+                with urllib.request.urlopen(url, timeout=10) as r:
+                    return _json.loads(r.read())
+
+            data = await asyncio.to_thread(_fetch)
+
+            results = [
+                {
+                    "id":        item["id"]["videoId"],
+                    "title":     item["snippet"]["title"],
+                    "channel":   item["snippet"]["channelTitle"],
+                    "thumbnail": item["snippet"]["thumbnails"]["medium"]["url"],
+                }
+                for item in data.get("items", [])
+                if item.get("id", {}).get("videoId")
+            ]
+
+            await ws_server.broadcast({"type": "youtube_search_results", "results": results})
+            print(f"[YouTube] Returned {len(results)} results for '{query}'")
+
+        except Exception as e:
+            print(f"[YouTube] Search error: {e}")
+            await ws_server.broadcast({
+                "type": "youtube_search_results",
+                "results": [],
+                "error": f"Search failed: {e}",
+            })
+
+    elif msg_type == "youtube_control":
+        # Forward control commands (originating from voice) to all clients
+        await ws_server.broadcast(msg)
+        print(f"[YouTube] Control forwarded: {msg.get('action')}")
+
+
 def is_whats_playing(q: str) -> bool:
     """Check if user is asking 'what's playing' in various forms."""
     if not q:
@@ -381,6 +449,7 @@ async def initialize():
     await ws_server.start()
     ws_server.set_message_handler(process_transcript_async)
     ws_server.set_light_control_handler(handle_light_control)
+    ws_server.set_youtube_handler(handle_youtube_message)
     print("[✓] WebSocket server started on port 8765")
 
     # =========================================================================
