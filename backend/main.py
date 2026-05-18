@@ -25,6 +25,7 @@ from services.music_spotify import SpotifyMusicClient
 # from services.smart_home import SmartHomeClient
 from services.spotify_poller import SpotifyPoller
 from services.tapo_light import turn_on as light_on, turn_off as light_off, set_brightness
+from camera.gesture_bridge import GestureBridge
 
 # Globals
 ws_server: WebSocketServer = None
@@ -32,6 +33,7 @@ wake_listener: WakeWordListener = None
 spotify_client: SpotifyMusicClient = None
 # smart_home: SmartHomeClient = None
 spotify_poller: SpotifyPoller = None
+gesture_bridge: GestureBridge = None
 main_loop: asyncio.AbstractEventLoop = None
 
 # Frontend-only navigation phrases (no GPT/TTS)
@@ -331,7 +333,7 @@ def on_wake():
 
 async def initialize():
     """Initialize all services."""
-    global ws_server, wake_listener, spotify_client, spotify_poller, main_loop
+    global ws_server, wake_listener, spotify_client, spotify_poller, gesture_bridge, main_loop
 
     print("\n" + "=" * 50)
     print("AURA Voice Assistant")
@@ -356,6 +358,21 @@ async def initialize():
     # =========================================================================
     # Tapo lights ready
     print("[✓] Tapo light service ready")
+
+    # =========================================================================
+    # 2.5) Gesture control (camera + hand tracking)
+    # =========================================================================
+    try:
+        gesture_bridge = GestureBridge(websocket_handler=ws_server.broadcast)
+        if gesture_bridge.initialize():
+            gesture_bridge.start()
+            print("[✓] Gesture control started (camera + hand tracking)")
+        else:
+            print("[!] Gesture control failed to initialize")
+            gesture_bridge = None
+    except Exception as e:
+        print(f"[!] Gesture control init failed: {e}")
+        gesture_bridge = None
 
     # =========================================================================
     # 3) Spotify client + background poller
@@ -397,9 +414,13 @@ async def initialize():
 
 async def shutdown():
     """Gracefully stop all services."""
-    global spotify_poller, ws_server
+    global spotify_poller, gesture_bridge, ws_server
 
     print("\n[SHUTDOWN] Stopping AURA...")
+
+    if gesture_bridge:
+        gesture_bridge.stop()
+        print("[✓] Gesture control stopped")
 
     if spotify_poller:
         spotify_poller.stop()
