@@ -139,3 +139,15 @@
 .weather-icon {
   filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
 }
+
+/* === GESTURE SELECTION GLOW === */
+@keyframes gesture-select-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(200,169,110,0.5), 0 0 24px rgba(200,169,110,0.2); }
+  50%       { box-shadow: 0 0 22px rgba(200,169,110,0.8), 0 0 44px rgba(200,169,110,0.35); }
+}
+
+.app-card-selected {
+  border-color: rgba(200,169,110,0.85) !important;
+  background: rgba(200,169,110,0.08) !important;
+  animation: gesture-select-pulse 1.8s ease-in-out infinite;
+}

@@ -3,6 +3,7 @@ import "./App.css";
 import IdleScreen from "./screens/IdleScreen";
 import HomePage from "./screens/HomePage";
 import AppView from "./screens/AppView";
+import { APPS } from "./components/AppGrid";
 
 const WS_URL = "ws://localhost:8765";
 
@@ -51,6 +52,8 @@ function useAuraSocket(onMessage) {
 export default function App() {
   const [screen, setScreen] = useState("idle");
   const [currentApp, setCurrentApp] = useState(null);
+  const [selectedAppIndex, setSelectedAppIndex] = useState(0);
+  const [selectionMode, setSelectionMode] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -157,10 +160,54 @@ export default function App() {
         break;
       }
 
-      case "gesture_command":
-        console.log("🖐️ Gesture:", msg.gesture, "→", msg.command);
-        handleNav(msg.command);
+      case "gesture_command": {
+        const { gesture } = msg;
+        console.log(`🖐️ Gesture: ${gesture} | screen: ${screen} | selected: ${APPS[selectedAppIndex]?.name}`);
+
+        if (gesture === 'fist') {
+          if (screen === 'idle') {
+            console.log('👊 Fist on idle → apps grid');
+            setScreen('home');
+            setSelectionMode(true);
+          } else if (screen === 'home') {
+            const app = APPS[selectedAppIndex];
+            console.log(`👊 Fist on apps → opening ${app.name}`);
+            setCurrentApp(app.id);
+            setScreen('app');
+            setSelectionMode(false);
+          } else if (screen === 'app') {
+            console.log('👊 Fist inside app → interact');
+          }
+        } else if (gesture === 'point_up') {
+          if (screen === 'home') {
+            setSelectedAppIndex((prev) => {
+              const next = (prev - 1 + APPS.length) % APPS.length;
+              console.log(`👆 Point up → ${APPS[next].name}`);
+              return next;
+            });
+          }
+        } else if (gesture === 'point_down') {
+          if (screen === 'home') {
+            setSelectedAppIndex((prev) => {
+              const next = (prev + 1) % APPS.length;
+              console.log(`👇 Point down → ${APPS[next].name}`);
+              return next;
+            });
+          }
+        } else if (gesture === 'palm_open') {
+          if (screen === 'app') {
+            console.log('🖐️ Palm open → back to apps grid');
+            setCurrentApp(null);
+            setScreen('home');
+            setSelectionMode(true);
+          } else if (screen === 'home') {
+            console.log('🖐️ Palm open → back to idle');
+            setSelectionMode(false);
+            setScreen('idle');
+          }
+        }
         break;
+      }
 
       default:
         break;
@@ -210,7 +257,11 @@ export default function App() {
   if (screen === "home") {
     return (
       <div className="min-h-screen bg-black text-white">
-        <HomePage onAppClick={(id) => { setCurrentApp(id); setScreen("app"); }} />
+        <HomePage
+            onAppClick={(id) => { setCurrentApp(id); setScreen("app"); setSelectionMode(false); }}
+            selectedAppIndex={selectedAppIndex}
+            selectionMode={selectionMode}
+          />
         <DevButton />
       </div>
     );

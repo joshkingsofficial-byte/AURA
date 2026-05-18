@@ -1,7 +1,7 @@
 import React from 'react';
 import AppGrid from '../components/AppGrid';
 
-function HomePage({ onAppClick }) {
+function HomePage({ onAppClick, selectedAppIndex, selectionMode }) {
   const now = new Date();
   const time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   const date = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
@@ -77,7 +77,11 @@ function HomePage({ onAppClick }) {
         {/* Apps Grid */}
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: '100%', maxWidth: '1200px' }}>
-            <AppGrid onAppClick={onAppClick} />
+            <AppGrid
+                onAppClick={onAppClick}
+                selectedAppIndex={selectedAppIndex}
+                selectionMode={selectionMode}
+              />
           </div>
         </div>
 
