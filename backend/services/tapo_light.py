@@ -28,6 +28,20 @@ async def set_brightness_async(level):
     await device.set_brightness(level)
     print(f"[Tapo] Brightness set to {level}%")
 
+async def set_color_async(hue, saturation):
+    from tapo import ApiClient
+    client = ApiClient(TAPO_EMAIL, TAPO_PASSWORD)
+    device = await client.l530(TAPO_IP)
+    await device.set_color(hue, saturation)
+    print(f"[Tapo] Color set to hue:{hue} sat:{saturation}")
+
+async def set_color_temperature_async(kelvin):
+    from tapo import ApiClient
+    client = ApiClient(TAPO_EMAIL, TAPO_PASSWORD)
+    device = await client.l530(TAPO_IP)
+    await device.set_color_temperature(kelvin)
+    print(f"[Tapo] Color temperature set to {kelvin}K")
+
 def turn_on():
     try:
         asyncio.run(turn_on_async())

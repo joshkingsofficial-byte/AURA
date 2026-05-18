@@ -53,6 +53,41 @@ NAV_PHRASES = [
 ]
 
 
+async def handle_light_control(msg: dict):
+    """Handle light_control WebSocket messages from the UI."""
+    action = msg.get("action")
+    value = msg.get("value")
+    print(f"[LightControl] action={action} value={value}")
+
+    try:
+        from tapo import ApiClient
+        client = ApiClient(os.getenv("TAPO_EMAIL"), os.getenv("TAPO_PASSWORD"))
+        device = await client.l530(os.getenv("TAPO_IP"))
+
+        if action == "toggle":
+            if value:
+                await device.on()
+                print("[Tapo] UI → Light ON")
+            else:
+                await device.off()
+                print("[Tapo] UI → Light OFF")
+        elif action == "brightness":
+            await device.set_brightness(int(value))
+            print(f"[Tapo] UI → Brightness {value}%")
+        elif action == "color_temp":
+            await device.set_color_temperature(int(value))
+            print(f"[Tapo] UI → Color temp {value}K")
+        elif action == "color":
+            hue = int(value.get("hue", 0))
+            sat = int(value.get("saturation", 100))
+            await device.set_color(hue, sat)
+            print(f"[Tapo] UI → Color hue:{hue} sat:{sat}")
+        else:
+            print(f"[LightControl] Unknown action: {action}")
+    except Exception as e:
+        print(f"[Tapo] Light control error: {e}")
+
+
 def is_whats_playing(q: str) -> bool:
     """Check if user is asking 'what's playing' in various forms."""
     if not q:
@@ -345,6 +380,7 @@ async def initialize():
     ws_server = WebSocketServer(host="0.0.0.0", port=8765)
     await ws_server.start()
     ws_server.set_message_handler(process_transcript_async)
+    ws_server.set_light_control_handler(handle_light_control)
     print("[✓] WebSocket server started on port 8765")
 
     # =========================================================================

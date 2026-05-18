@@ -24,7 +24,7 @@ function AppView({ appName, spotifyData, onBack }) {
       case 'weather':
         return <WeatherApp />;
       case 'lights':
-        return <LightsApp />;
+        return <LightsApp onBack={onBack} />;
       case 'news':
         return <NewsApp />;
       case 'recipe':
