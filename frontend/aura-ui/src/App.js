@@ -157,6 +157,11 @@ export default function App() {
         break;
       }
 
+      case "gesture_command":
+        console.log("🖐️ Gesture:", msg.gesture, "→", msg.command);
+        handleNav(msg.command);
+        break;
+
       default:
         break;
     }
