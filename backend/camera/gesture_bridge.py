@@ -5,8 +5,8 @@ AURA Gesture WebSocket Bridge
 import asyncio
 import json
 from typing import Optional
-from camera_manager import CameraManager
-from gesture_detector import GestureDetector, Gesture, GESTURE_TO_COMMAND
+from camera.camera_manager import CameraManager
+from camera.gesture_detector import GestureDetector, Gesture, GESTURE_TO_COMMAND
 
 class GestureBridge:
     def __init__(self, websocket_handler=None, loop=None):
