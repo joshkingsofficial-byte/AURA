@@ -10,15 +10,25 @@ class WebSocketServer:
         self.port = port
         self.clients = set()
         self.server = None
+        self.message_handler = None
+
+    def set_message_handler(self, handler):
+        self.message_handler = handler
 
     async def handler(self, websocket):
         client_info = f"{websocket.remote_address}"
         self.clients.add(websocket)
         print(f"[WS] Client connected from {client_info}")
         try:
-            async for _ in websocket:
-                # No inbound processing for now
-                pass
+            async for raw in websocket:
+                try:
+                    msg = json.loads(raw)
+                except Exception:
+                    continue
+                if msg.get("type") == "transcript" and self.message_handler:
+                    text = msg.get("text", "").strip()
+                    if text:
+                        await self.message_handler(text)
         except websockets.exceptions.ConnectionClosed:
             print(f"[WS] Client disconnected: {client_info}")
         finally:

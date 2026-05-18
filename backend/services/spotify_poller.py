@@ -67,7 +67,8 @@ class SpotifyPoller:
             try:
                 self._check_and_broadcast()
             except Exception as e:
-                print(f"[SpotifyPoller] Error: {e}")
+                if "403" not in str(e):
+                    print(f"[SpotifyPoller] Error: {e}")
 
             # Sleep in small chunks so we can exit quickly
             for _ in range(self.interval * 2):
@@ -126,4 +127,5 @@ class SpotifyPoller:
                 print(f"[SpotifyPoller] Track: {track.get('name')} by {track.get('artists')} ({status})")
 
         except Exception as e:
-            print(f"[SpotifyPoller] Failed to check track: {e}")
+            if "403" not in str(e):
+                print(f"[SpotifyPoller] Failed to check track: {e}")

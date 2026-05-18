@@ -45,7 +45,7 @@ function useAuraSocket(onMessage) {
     };
   }, []);
 
-  return { status };
+  return { status, wsRef };
 }
 
 export default function App() {
@@ -58,6 +58,14 @@ export default function App() {
   const [spotifyData, setSpotifyData] = useState(null);
 
   const handleNav = (norm) => {
+    if (norm === "go back" || norm.includes("go back") || norm.includes("go home") || norm.includes("go to idle") || norm.includes("back to idle")) {
+      setCurrentApp(null);
+      setScreen("idle");
+      setTranscript("");
+      setReply("");
+      return true;
+    }
+
     if (
       norm.includes("go to home page") ||
       norm.includes("go to the home page") ||
@@ -93,7 +101,7 @@ export default function App() {
     if (norm.includes("open settings")) { setCurrentApp("settings"); setScreen("app"); return; }
   };
 
-  const { status } = useAuraSocket((msg) => {
+  const { status, wsRef } = useAuraSocket((msg) => {
     switch (msg.type) {
       case "wake_detected":
       case "wake":
@@ -160,11 +168,26 @@ export default function App() {
     return (
       <button
         onClick={() => {
-          const cmd = window.prompt("Test voice command:");
+          const cmd = window.prompt("Test command:");
           if (!cmd) return;
-          setTranscript(cmd);
           const norm = cmd.toLowerCase().trim().replace(/[.!?]$/g, "");
-          handleNav(norm);
+
+          // Try nav first
+          const navResult = handleNav(norm);
+          if (navResult) return;
+
+          // Otherwise send to backend via WebSocket
+          setTranscript(cmd);
+          setIsThinking(true);
+          setReply("");
+
+          const ws = wsRef.current;
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "transcript", text: cmd }));
+          } else {
+            setReply("Backend not connected. Start the backend first.");
+            setIsThinking(false);
+          }
         }}
         style={{
           position: "fixed", bottom: "24px", right: "24px", zIndex: 9999,
