@@ -4,51 +4,43 @@ import { useAuraSocket } from '../hooks/useAuraSocket';
 const WS_URL = 'ws://localhost:8765';
 
 function YouTubeApp({ onBack }) {
-  const [videoId, setVideoId]           = useState(null);
-  const [videoTitle, setVideoTitle]     = useState('');
-  const [channelName, setChannelName]   = useState('');
-  const [searchQuery, setSearchQuery]   = useState('');
+  const [videoId, setVideoId]             = useState(null);
+  const [videoTitle, setVideoTitle]       = useState('');
+  const [channelName, setChannelName]     = useState('');
+  const [searchQuery, setSearchQuery]     = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching]   = useState(false);
-  const [searchError, setSearchError]   = useState(null);
-  const [isPlaying, setIsPlaying]       = useState(false);
-  const [volume, setVolume]             = useState(80);
-  const [playerReady, setPlayerReady]   = useState(false);
+  const [isSearching, setIsSearching]     = useState(false);
+  const [searchError, setSearchError]     = useState(null);
+  const [isPlaying, setIsPlaying]         = useState(false);
+  const [volume, setVolume]               = useState(80);
+  const [playerReady, setPlayerReady]     = useState(false);
 
-  const playerRef      = useRef(null);
-  const playerDivRef   = useRef(null);
-  const sendRef        = useRef(null);
-  const volumeRef      = useRef(80);
-  const isPlayingRef   = useRef(false);
+  const playerRef       = useRef(null);
+  const sendRef         = useRef(null);
+  const volumeRef       = useRef(80);
+  const isPlayingRef    = useRef(false);
+  const ytReadyRef      = useRef(false);
+  const pendingVideoRef = useRef(null);
+  const resultsRef      = useRef(null);
 
   useEffect(() => { volumeRef.current   = volume;    }, [volume]);
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
 
-  // ── YouTube IFrame API ──────────────────────────────────────────────────────
+  // ── YouTube IFrame API: preload script but DON'T create player yet ──────────
   useEffect(() => {
-    const initPlayer = () => {
-      if (playerRef.current || !document.getElementById('yt-player')) return;
-      playerRef.current = new window.YT.Player('yt-player', {
-        height: '100%',
-        width: '100%',
-        playerVars: { autoplay: 0, controls: 1, rel: 0, modestbranding: 1 },
-        events: {
-          onReady: () => {
-            playerRef.current.setVolume(80);
-            setPlayerReady(true);
-          },
-          onStateChange: (e) => {
-            setIsPlaying(e.data === window.YT.PlayerState.PLAYING);
-          },
-        },
-      });
+    const onAPIReady = () => {
+      ytReadyRef.current = true;
+      if (pendingVideoRef.current) {
+        createPlayer(pendingVideoRef.current);
+        pendingVideoRef.current = null;
+      }
     };
 
     if (window.YT && window.YT.Player) {
-      initPlayer();
+      ytReadyRef.current = true;
     } else {
       const prev = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = () => { prev?.(); initPlayer(); };
+      window.onYouTubeIframeAPIReady = () => { prev?.(); onAPIReady(); };
       if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
         const tag = document.createElement('script');
         tag.src = 'https://www.youtube.com/iframe_api';
@@ -65,13 +57,40 @@ function YouTubeApp({ onBack }) {
     };
   }, []);
 
+  // ── Create player with a specific videoId (called on first selection) ───────
+  const createPlayer = useCallback((vid) => {
+    const el = document.getElementById('yt-player');
+    if (!el) return;
+
+    if (playerRef.current) {
+      playerRef.current.loadVideoById(vid);
+      return;
+    }
+
+    playerRef.current = new window.YT.Player('yt-player', {
+      videoId: vid,
+      height: '100%',
+      width: '100%',
+      playerVars: { autoplay: 1, controls: 1, rel: 0, modestbranding: 1 },
+      events: {
+        onReady: (e) => {
+          e.target.setVolume(volumeRef.current);
+          setPlayerReady(true);
+        },
+        onStateChange: (e) => {
+          setIsPlaying(e.data === window.YT.PlayerState.PLAYING);
+        },
+      },
+    });
+  }, []);
+
   // ── Gesture / WS control ───────────────────────────────────────────────────
   const applyControl = useCallback((action, value) => {
     const p = playerRef.current;
     if (!p) return;
     switch (action) {
-      case 'play':        p.playVideo();  break;
-      case 'pause':       p.pauseVideo(); break;
+      case 'play':         p.playVideo();  break;
+      case 'pause':        p.pauseVideo(); break;
       case 'toggle':
         isPlayingRef.current ? p.pauseVideo() : p.playVideo();
         break;
@@ -129,10 +148,13 @@ function YouTubeApp({ onBack }) {
   const { send } = useAuraSocket(WS_URL, (msg) => {
     switch (msg.type) {
       case 'youtube_search_results':
+        console.log(`📺 youtube_search_results received: ${msg.results?.length ?? 0} items, error: ${msg.error ?? 'none'}`);
         setSearchResults(msg.results || []);
         setIsSearching(false);
         setSearchError(msg.error || null);
-        console.log(`📺 Got ${msg.results?.length || 0} results`);
+        if (msg.results?.length > 0) {
+          setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+        }
         break;
       case 'youtube_control':
         applyControl(msg.action, msg.value);
@@ -155,7 +177,7 @@ function YouTubeApp({ onBack }) {
     setSearchError(null);
     setSearchResults([]);
     send({ type: 'youtube_search', query: q });
-    console.log(`🔍 YouTube search: "${q}"`);
+    console.log(`🔍 Sending youtube_search: "${q}"`);
   };
 
   const handleVideoSelect = (video) => {
@@ -163,10 +185,13 @@ function YouTubeApp({ onBack }) {
     setVideoTitle(video.title);
     setChannelName(video.channel);
     setSearchResults([]);
-    if (playerRef.current && playerReady) {
-      playerRef.current.loadVideoById(video.id);
+    console.log(`▶️ Selected: ${video.title} (${video.id})`);
+
+    if (ytReadyRef.current) {
+      createPlayer(video.id);
+    } else {
+      pendingVideoRef.current = video.id;
     }
-    console.log(`▶️ Loading: ${video.title}`);
   };
 
   const togglePlayPause = () => {
@@ -181,8 +206,8 @@ function YouTubeApp({ onBack }) {
   };
 
   const handleFullscreen = () => {
-    const iframe = document.querySelector('#yt-player iframe') || document.getElementById('yt-player');
-    iframe?.requestFullscreen?.();
+    const el = document.querySelector('#yt-player iframe') || document.getElementById('yt-player');
+    el?.requestFullscreen?.();
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -195,13 +220,14 @@ function YouTubeApp({ onBack }) {
       color: '#fff',
       fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
     }}>
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '28px' }}>
         <button onClick={onBack} style={S.backBtn}>← Back</button>
         <span style={S.title}>YOUTUBE</span>
       </div>
 
-      {/* Search Bar */}
+      {/* Search bar */}
       <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         <input
           type="text"
@@ -216,12 +242,12 @@ function YouTubeApp({ onBack }) {
       </form>
 
       {searchError && (
-        <p style={{ color: 'rgba(255,110,110,0.75)', fontSize: '12px', marginBottom: '14px', textAlign: 'center' }}>
-          {searchError}
+        <p style={{ color: 'rgba(255,110,110,0.8)', fontSize: '12px', marginBottom: '14px', textAlign: 'center', letterSpacing: '0.03em' }}>
+          ⚠ {searchError}
         </p>
       )}
 
-      {/* Player */}
+      {/* Player — placeholder until a video is selected */}
       <div style={{ marginBottom: '16px' }}>
         <div style={{
           position: 'relative',
@@ -229,21 +255,27 @@ function YouTubeApp({ onBack }) {
           background: '#000',
           borderRadius: '12px',
           overflow: 'hidden',
-          border: videoId ? '1px solid rgba(200,169,110,0.25)' : '1px solid rgba(255,255,255,0.05)',
+          border: videoId ? '1px solid rgba(200,169,110,0.3)' : '1px solid rgba(255,255,255,0.06)',
         }}>
+          {/* Player div — always present so IFrame API can target it */}
           <div
-            ref={playerDivRef}
             id="yt-player"
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+            style={{
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%',
+              display: videoId ? 'block' : 'none',
+            }}
           />
+          {/* Placeholder shown until a video is chosen */}
           {!videoId && (
             <div style={{
               position: 'absolute', inset: 0,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
               gap: '12px', pointerEvents: 'none',
             }}>
-              <span style={{ fontSize: '52px', opacity: 0.25 }}>📺</span>
-              <span style={{ fontSize: '12px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.18)', fontWeight: 200 }}>
+              <span style={{ fontSize: '52px', opacity: 0.18 }}>📺</span>
+              <span style={{ fontSize: '12px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.15)', fontWeight: 200 }}>
                 SEARCH TO PLAY A VIDEO
               </span>
             </div>
@@ -252,7 +284,7 @@ function YouTubeApp({ onBack }) {
 
         {videoTitle && (
           <div style={{ marginTop: '10px', paddingLeft: '2px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 300, color: 'rgba(255,255,255,0.88)', marginBottom: '3px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 300, color: 'rgba(255,255,255,0.9)', marginBottom: '3px' }}>
               {videoTitle}
             </div>
             <div style={{ fontSize: '11px', color: 'rgba(200,169,110,0.55)', letterSpacing: '0.05em' }}>
@@ -264,17 +296,17 @@ function YouTubeApp({ onBack }) {
 
       {/* Playback controls */}
       {videoId && playerReady && (
-        <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', marginBottom: '20px' }}>
+        <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', marginBottom: '24px' }}>
           <button onClick={togglePlayPause} style={S.playBtn}>
             {isPlaying ? '⏸' : '▶'}
           </button>
           <button
             onClick={() => playerRef.current?.seekTo(Math.max(0, playerRef.current.getCurrentTime() - 10), true)}
-            style={S.smallBtn} title="Back 10s"
+            style={S.smallBtn}
           >⏮ 10s</button>
           <button
             onClick={() => playerRef.current?.seekTo(playerRef.current.getCurrentTime() + 10, true)}
-            style={S.smallBtn} title="Forward 10s"
+            style={S.smallBtn}
           >10s ⏭</button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
             <span style={{ fontSize: '12px' }}>🔊</span>
@@ -286,33 +318,66 @@ function YouTubeApp({ onBack }) {
             />
             <span style={{ fontSize: '10px', color: 'rgba(200,169,110,0.5)', width: '28px' }}>{volume}%</span>
           </div>
-          <button onClick={handleFullscreen} style={S.smallBtn} title="Fullscreen">⛶</button>
+          <button onClick={handleFullscreen} style={S.smallBtn}>⛶</button>
+        </div>
+      )}
+
+      {/* Loading spinner */}
+      {isSearching && (
+        <div style={{ textAlign: 'center', padding: '24px', color: 'rgba(200,169,110,0.5)', letterSpacing: '0.2em', fontSize: '12px' }}>
+          SEARCHING···
         </div>
       )}
 
       {/* Search results */}
       {searchResults.length > 0 && (
-        <div style={{ marginBottom: '24px' }}>
+        <div ref={resultsRef} style={{ marginBottom: '24px' }}>
           <div style={{ fontSize: '10px', letterSpacing: '0.22em', color: 'rgba(200,169,110,0.5)', marginBottom: '14px' }}>
-            RESULTS
+            {searchResults.length} RESULTS
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
             {searchResults.map((video) => (
-              <div key={video.id} onClick={() => handleVideoSelect(video)} style={S.resultCard}>
-                <img
-                  src={video.thumbnail}
-                  alt={video.title}
-                  style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', borderRadius: '6px', display: 'block', marginBottom: '8px' }}
-                />
+              <div
+                key={video.id}
+                onClick={() => handleVideoSelect(video)}
+                style={S.resultCard}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(200,169,110,0.4)';
+                  e.currentTarget.style.background = 'rgba(200,169,110,0.06)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(200,169,110,0.1)';
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                }}
+              >
+                <div style={{ position: 'relative', marginBottom: '8px' }}>
+                  <img
+                    src={video.thumbnail}
+                    alt=""
+                    style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', borderRadius: '6px', display: 'block' }}
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                  <div style={{
+                    position: 'absolute', inset: 0, borderRadius: '6px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    opacity: 0, transition: 'opacity 0.2s',
+                    background: 'rgba(0,0,0,0.4)',
+                  }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = 1; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = 0; }}
+                  >
+                    <span style={{ fontSize: '28px' }}>▶</span>
+                  </div>
+                </div>
                 <p style={{
-                  fontSize: '11px', color: 'rgba(255,255,255,0.82)', fontWeight: 300,
+                  fontSize: '11px', color: 'rgba(255,255,255,0.85)', fontWeight: 300,
                   lineHeight: 1.4, margin: '0 0 4px',
                   overflow: 'hidden', display: '-webkit-box',
                   WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                 }}>
                   {video.title}
                 </p>
-                <p style={{ fontSize: '10px', color: 'rgba(200,169,110,0.5)', margin: 0, letterSpacing: '0.04em' }}>
+                <p style={{ fontSize: '10px', color: 'rgba(200,169,110,0.5)', margin: 0 }}>
                   {video.channel}
                 </p>
               </div>
@@ -394,9 +459,8 @@ const S = {
     width: '38px', height: '38px', borderRadius: '50%',
     background: 'rgba(200,169,110,0.15)',
     border: '1px solid rgba(200,169,110,0.35)',
-    color: '#c8a96e', cursor: 'pointer',
-    fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    transition: 'background 0.2s',
+    color: '#c8a96e', cursor: 'pointer', fontSize: '16px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
   smallBtn: {
     background: 'rgba(255,255,255,0.04)',
