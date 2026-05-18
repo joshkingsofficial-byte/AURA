@@ -80,7 +80,7 @@ async def handle_light_control(msg: dict):
         elif action == "color":
             hue = int(value.get("hue", 0))
             sat = int(value.get("saturation", 100))
-            await device.set_color(hue, sat)
+            await device.set_hue_saturation(hue, sat)
             print(f"[Tapo] UI → Color hue:{hue} sat:{sat}")
         else:
             print(f"[LightControl] Unknown action: {action}")

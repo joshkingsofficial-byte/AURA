@@ -32,7 +32,7 @@ async def set_color_async(hue, saturation):
     from tapo import ApiClient
     client = ApiClient(TAPO_EMAIL, TAPO_PASSWORD)
     device = await client.l530(TAPO_IP)
-    await device.set_color(hue, saturation)
+    await device.set_hue_saturation(hue, saturation)
     print(f"[Tapo] Color set to hue:{hue} sat:{saturation}")
 
 async def set_color_temperature_async(kelvin):
