@@ -26,14 +26,14 @@ class GestureDetector:
         self.hands = self.mp_hands.Hands(
             static_image_mode=False,
             max_num_hands=1,
-            min_detection_confidence=0.7,
-            min_tracking_confidence=0.5
+            min_detection_confidence=0.85,
+            min_tracking_confidence=0.75
         )
         self.mp_draw = mp.solutions.drawing_utils
         self.on_gesture_callback = on_gesture_callback
         self.last_gesture = Gesture.NONE
         self.gesture_start_time = 0
-        self.gesture_cooldown = 0.8
+        self.gesture_cooldown = 1.5
         self.hand_history = []
         self.history_size = 10
 

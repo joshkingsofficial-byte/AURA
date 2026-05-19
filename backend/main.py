@@ -532,19 +532,18 @@ async def initialize():
 
     # =========================================================================
     # 2.5) Gesture control (camera + hand tracking)
-    # Disabled - enable when camera permissions are granted on target device
     # =========================================================================
-    # try:
-    #     gesture_bridge = GestureBridge(websocket_handler=ws_server.broadcast, loop=main_loop)
-    #     if gesture_bridge.initialize():
-    #         gesture_bridge.start()
-    #         print("[✓] Gesture control started (camera + hand tracking)")
-    #     else:
-    #         print("[!] Gesture control failed to initialize")
-    #         gesture_bridge = None
-    # except Exception as e:
-    #     print(f"[!] Gesture control init failed: {e}")
-    #     gesture_bridge = None
+    try:
+        gesture_bridge = GestureBridge(websocket_handler=ws_server.broadcast, loop=main_loop)
+        if gesture_bridge.initialize():
+            gesture_bridge.start()
+            print("[✓] Gesture control started (camera + hand tracking)")
+        else:
+            print("[!] Gesture control failed to initialize (camera unavailable?)")
+            gesture_bridge = None
+    except Exception as e:
+        print(f"[!] Gesture control init failed: {e}")
+        gesture_bridge = None
 
     # =========================================================================
     # 3) Spotify client + background poller
