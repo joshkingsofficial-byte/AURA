@@ -79,6 +79,28 @@ class CameraManager:
                 print(f"❌ Capture error: {e}")
                 time.sleep(1)
 
+    def capture_frame(self) -> "Optional[np.ndarray]":
+        """One-shot capture: open camera, grab one frame, release immediately.
+        Works without calling initialize() or start() first."""
+        import numpy as np
+        try:
+            cap = cv2.VideoCapture(0)
+            if not cap.isOpened():
+                print("[Camera] capture_frame: camera not available")
+                return None
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            for _ in range(6):
+                cap.read()
+            ret, frame = cap.read()
+            cap.release()
+            if not ret or frame is None:
+                return None
+            return cv2.flip(frame, 1)
+        except Exception as e:
+            print(f"[Camera] capture_frame error: {e}")
+            return None
+
     def stop(self):
         self.is_running = False
         if self.thread:

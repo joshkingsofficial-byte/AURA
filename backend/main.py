@@ -26,6 +26,7 @@ from services.music_spotify import SpotifyMusicClient
 from services.spotify_poller import SpotifyPoller
 from services.tapo_light import turn_on as light_on, turn_off as light_off, set_brightness
 # from camera.gesture_bridge import GestureBridge  # disabled: camera conflict
+from camera.camera_manager import CameraManager
 
 # Globals
 ws_server: WebSocketServer = None
@@ -34,6 +35,7 @@ spotify_client: SpotifyMusicClient = None
 # smart_home: SmartHomeClient = None
 spotify_poller: SpotifyPoller = None
 gesture_bridge = None  # GestureBridge disabled
+camera_manager: CameraManager = None
 main_loop: asyncio.AbstractEventLoop = None
 apple_music_poll_task = None
 
@@ -76,12 +78,12 @@ async def handle_vision_query(msg: dict):
     await ws_server.broadcast({"type": "vision_analyzing"})
 
     try:
-        from vision.vision_engine import analyze_b64, capture_frame, analyze
+        from vision.vision_engine import analyze_b64, analyze
 
         if image_b64:
             result = await analyze_b64(image_b64, query)
         else:
-            frame = await asyncio.to_thread(capture_frame)
+            frame = await asyncio.to_thread(camera_manager.capture_frame)
             if frame is None:
                 result = "I couldn't access the camera. Make sure the camera is connected."
             else:
@@ -725,6 +727,13 @@ async def initialize():
     # =========================================================================
     # gesture_bridge = GestureBridge(websocket_handler=ws_server.broadcast, loop=main_loop)
     print("[–] Gesture control disabled")
+
+    # =========================================================================
+    # 2.6) Camera manager — for Vision AI fallback capture
+    # =========================================================================
+    global camera_manager
+    camera_manager = CameraManager()
+    print("[✓] Camera manager ready (one-shot capture for Vision AI fallback)")
 
     # =========================================================================
     # 3) Spotify client + background poller
