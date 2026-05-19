@@ -420,44 +420,64 @@ async def process_transcript_async(text: str):
     # =========================================================================
     # APPLE MUSIC VOICE COMMANDS
     # =========================================================================
-    _AM_PLAY  = ["play music", "play apple music", "resume music", "resume the music", "start music", "unpause music"]
-    _AM_PAUSE = ["pause music", "pause the music", "stop music", "stop the music"]
-    _AM_NEXT  = ["skip", "next song", "next track", "skip song", "skip this"]
-    _AM_PREV  = ["previous song", "previous track", "last song", "go back to previous"]
-    _AM_VOLUP = ["volume up", "louder", "turn it up", "increase volume"]
-    _AM_VOLDN = ["volume down", "quieter", "turn it down", "decrease volume"]
+    _AM_PLAY  = ["play music", "play apple music", "resume music", "resume the music",
+                 "start music", "unpause music", "unpause the music",
+                 "play the music", "play song", "play it"]
+    _AM_PAUSE = ["pause music", "pause the music", "stop music", "stop the music",
+                 "pause song", "pause it", "stop playing"]
+    _AM_NEXT  = ["skip", "next song", "next track", "skip song", "skip this",
+                 "play next", "play next song", "next please"]
+    _AM_PREV  = ["previous song", "previous track", "last song", "go back to previous",
+                 "play previous", "go back a song", "play last song"]
+    _AM_VOLUP = ["volume up", "louder", "turn it up", "increase volume", "turn up the music",
+                 "turn up the volume", "make it louder"]
+    _AM_VOLDN = ["volume down", "quieter", "turn it down", "decrease volume", "turn down the music",
+                 "turn down the volume", "make it quieter"]
 
-    am_reply = None
-    try:
-        from music.apple_music_script import (
-            play as am_play, pause as am_pause,
-            next_track as am_next, previous_track as am_prev,
-            set_volume as am_vol, get_volume as am_getvol,
-        )
-        if any(k in lower for k in _AM_PLAY):
-            await asyncio.to_thread(am_play)
-            am_reply = "Playing."
-        elif any(k in lower for k in _AM_PAUSE):
-            await asyncio.to_thread(am_pause)
-            am_reply = "Paused."
-        elif any(k in lower for k in _AM_NEXT):
-            await asyncio.to_thread(am_next)
-            am_reply = "Next track."
-        elif any(k in lower for k in _AM_PREV):
-            await asyncio.to_thread(am_prev)
-            am_reply = "Previous track."
-        elif any(k in lower for k in _AM_VOLUP):
-            cur = await asyncio.to_thread(am_getvol)
-            await asyncio.to_thread(am_vol, min(100, cur + 15))
-            am_reply = "Volume up."
-        elif any(k in lower for k in _AM_VOLDN):
-            cur = await asyncio.to_thread(am_getvol)
-            await asyncio.to_thread(am_vol, max(0, cur - 15))
-            am_reply = "Volume down."
-    except Exception as e:
-        print(f"[AppleMusic] Voice command error: {e}")
+    # Determine intent from patterns before any execution (so exceptions don't break routing)
+    _am_intent = None
+    if any(k in lower for k in _AM_PLAY):
+        _am_intent = "play"
+    elif any(k in lower for k in _AM_PAUSE):
+        _am_intent = "pause"
+    elif any(k in lower for k in _AM_NEXT):
+        _am_intent = "next"
+    elif any(k in lower for k in _AM_PREV):
+        _am_intent = "prev"
+    elif any(k in lower for k in _AM_VOLUP):
+        _am_intent = "volup"
+    elif any(k in lower for k in _AM_VOLDN):
+        _am_intent = "voldn"
 
-    if am_reply:
+    if _am_intent:
+        print(f"[AppleMusic] Voice intent: {_am_intent}")
+        _am_replies = {
+            "play": "Playing.", "pause": "Paused.", "next": "Next track.",
+            "prev": "Previous track.", "volup": "Volume up.", "voldn": "Volume down.",
+        }
+        am_reply = _am_replies[_am_intent]
+        try:
+            from music.apple_music_script import (
+                play as am_play, pause as am_pause,
+                next_track as am_next, previous_track as am_prev,
+                set_volume as am_vol, get_volume as am_getvol,
+            )
+            if _am_intent == "play":
+                await asyncio.to_thread(am_play)
+            elif _am_intent == "pause":
+                await asyncio.to_thread(am_pause)
+            elif _am_intent == "next":
+                await asyncio.to_thread(am_next)
+            elif _am_intent == "prev":
+                await asyncio.to_thread(am_prev)
+            elif _am_intent == "volup":
+                cur = await asyncio.to_thread(am_getvol)
+                await asyncio.to_thread(am_vol, min(100, cur + 15))
+            elif _am_intent == "voldn":
+                cur = await asyncio.to_thread(am_getvol)
+                await asyncio.to_thread(am_vol, max(0, cur - 15))
+        except Exception as e:
+            print(f"[AppleMusic] Voice command execution error: {e}")
         await ws_server.broadcast({"type": "reply", "text": am_reply})
         synthesize_speech(am_reply)
         await ws_server.broadcast({"type": "done"})

@@ -16,6 +16,8 @@ def _run(script: str) -> str:
             ["osascript", "-e", script],
             capture_output=True, text=True, timeout=5
         )
+        if r.returncode != 0 and r.stderr.strip():
+            print(f"[AppleMusic] osascript stderr: {r.stderr.strip()}")
         return r.stdout.strip()
     except Exception as e:
         print(f"[AppleMusic] osascript error: {e}")
@@ -57,18 +59,30 @@ def get_volume() -> int:
 def get_current_track() -> Optional[Dict[str, Any]]:
     """Return dict with title/artist/album/is_playing/volume, or None if stopped."""
     script = '''
-tell application "Music"
-    if player state is playing or player state is paused then
-        set t to name of current track
-        set a to artist of current track
-        set al to album of current track
-        set vol to sound volume
-        set st to player state as string
-        return t & "|||" & a & "|||" & al & "|||" & (vol as string) & "|||" & st
-    else
-        return ""
-    end if
+-- Check process first to avoid launching Music.app
+tell application "System Events"
+    if not (exists process "Music") then return ""
 end tell
+tell application "Music"
+    try
+        if player state is playing or player state is paused then
+            set t to name of current track
+            set a to artist of current track
+            set al to album of current track
+            set vol to sound volume
+            if player state is playing then
+                set st to "playing"
+            else
+                set st to "paused"
+            end if
+            return t & "|||" & a & "|||" & al & "|||" & (vol as string) & "|||" & st
+        end if
+    on error errMsg
+        log errMsg
+        return ""
+    end try
+end tell
+return ""
 '''
     raw = _run(script)
     if not raw:
