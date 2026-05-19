@@ -2,6 +2,7 @@ import React from 'react';
 import AppCard from './AppCard';
 
 export const APPS = [
+  { id: 'music',    name: 'Music',    icon: '♪',  color: 'from-pink-500 to-rose-700' },
   { id: 'spotify',  name: 'Spotify',  icon: '🎵', color: 'from-green-500 to-green-700' },
   { id: 'youtube',  name: 'YouTube',  icon: '📺', color: 'from-red-500 to-red-700' },
   { id: 'lights',   name: 'Lights',   icon: '💡', color: 'from-yellow-500 to-orange-500' },

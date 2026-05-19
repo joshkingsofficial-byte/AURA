@@ -35,6 +35,7 @@ spotify_client: SpotifyMusicClient = None
 spotify_poller: SpotifyPoller = None
 gesture_bridge: GestureBridge = None
 main_loop: asyncio.AbstractEventLoop = None
+apple_music_poll_task = None
 
 # Frontend-only navigation phrases (no GPT/TTS)
 NAV_PHRASES = [
@@ -43,7 +44,7 @@ NAV_PHRASES = [
     "open spotify", "open youtube", "open weather", "open lights", "open light",
     "open news", "open recipe", "open recipes", "open notes", "open to do",
     "open memory", "open timer", "open alarm", "open photos", "open calendar",
-    "open email", "open settings", "open vision",
+    "open email", "open settings", "open vision", "open music",
     "go to apps", "show apps", "open apps", "show me apps", "go to the apps",
     "whats the weather", "what's the weather", "show me the weather", "open weather", "check the weather",
     "check my emails", "read my emails", "open my emails", "show my emails", "any emails", "any important emails",
@@ -94,6 +95,73 @@ async def handle_vision_query(msg: dict):
     await ws_server.broadcast({"type": "vision_result", "text": result, "query": query})
     synthesize_speech(result)
     await ws_server.broadcast({"type": "done"})
+
+
+async def handle_apple_music_control(msg: dict):
+    """Handle apple_music_control WebSocket messages from the UI."""
+    action = msg.get("action")
+    value  = msg.get("value")
+    print(f"[AppleMusic] action={action} value={value}")
+    try:
+        from music.apple_music_script import (
+            play as am_play, pause as am_pause,
+            next_track as am_next, previous_track as am_prev,
+            toggle_play_pause, set_volume as am_vol,
+            get_current_track as am_track,
+        )
+        if action == "play":
+            await asyncio.to_thread(am_play)
+        elif action == "pause":
+            await asyncio.to_thread(am_pause)
+        elif action == "toggle":
+            await asyncio.to_thread(toggle_play_pause)
+        elif action == "next":
+            await asyncio.to_thread(am_next)
+        elif action == "previous":
+            await asyncio.to_thread(am_prev)
+        elif action == "volume" and value is not None:
+            await asyncio.to_thread(am_vol, int(value))
+    except Exception as e:
+        print(f"[AppleMusic] Control error: {e}")
+
+
+async def apple_music_poll_loop():
+    """Poll Apple Music every 3 s; broadcast music_update on track/state change."""
+    global ws_server
+    from music.apple_music_script import get_current_track as am_track, get_album_art_b64
+
+    last_id = None
+    last_playing = None
+    last_art = None
+
+    while True:
+        try:
+            track = await asyncio.to_thread(am_track)
+            if track:
+                tid = f"{track['title']}|{track['artist']}"
+                changed = tid != last_id or track["is_playing"] != last_playing
+                if changed:
+                    if tid != last_id:
+                        last_art = await asyncio.to_thread(get_album_art_b64)
+                        last_id = tid
+                    last_playing = track["is_playing"]
+                    await ws_server.broadcast({
+                        "type": "music_update",
+                        "track": {
+                            "id":          last_id,
+                            "name":        track["title"],
+                            "artists":     track["artist"],
+                            "album":       track["album"],
+                            "album_image": f"data:image/jpeg;base64,{last_art}" if last_art else None,
+                            "is_playing":  track["is_playing"],
+                        },
+                    })
+            elif last_id is not None:
+                last_id = last_playing = last_art = None
+                await ws_server.broadcast({"type": "music_update", "track": None})
+        except Exception as e:
+            print(f"[AppleMusic] Poll error: {e}")
+        await asyncio.sleep(3)
 
 
 async def handle_light_control(msg: dict):
@@ -246,26 +314,40 @@ async def process_transcript_async(text: str):
     print(f"[TRANSCRIPT] '{text}'")
 
     # =========================================================================
-    # 0) FAST-PATH: "What's playing?" → Answer immediately with live Spotify
+    # 0) FAST-PATH: "What's playing?" → Spotify first, then Apple Music
     # =========================================================================
-    if is_whats_playing(text) and spotify_client:
-        try:
-            track = spotify_client.get_current_track()
-            if track and track.get("id"):
-                name = track.get("name") or "Unknown"
-                artists = track.get("artists") or ""
-                reply = f"Currently playing: {name}{(' by ' + artists) if artists else ''}."
-            else:
-                reply = "I don't see an active Spotify track right now."
-            
-            print(f"[SPOTIFY_FASTPATH] '{reply}'")
-            await ws_server.broadcast({"type": "reply", "text": reply})
-            synthesize_speech(reply)
-            await ws_server.broadcast({"type": "done"})
-            return  # IMPORTANT: Exit early, do NOT fall through to GPT
-        except Exception as e:
-            print(f"[Spotify] Quick answer failed: {e}")
-            # Fall through to normal GPT path if fast-path fails
+    if is_whats_playing(text):
+        replied = False
+        if spotify_client:
+            try:
+                track = spotify_client.get_current_track()
+                if track and track.get("id"):
+                    name = track.get("name") or "Unknown"
+                    artists = track.get("artists") or ""
+                    reply = f"Currently playing: {name}{(' by ' + artists) if artists else ''}."
+                    print(f"[SPOTIFY_FASTPATH] '{reply}'")
+                    await ws_server.broadcast({"type": "reply", "text": reply})
+                    synthesize_speech(reply)
+                    await ws_server.broadcast({"type": "done"})
+                    return
+            except Exception as e:
+                print(f"[Spotify] Quick answer failed: {e}")
+
+        if not replied:
+            try:
+                from music.apple_music_script import get_current_track as am_track
+                track = await asyncio.to_thread(am_track)
+                if track:
+                    reply = f"Currently playing: {track['title']} by {track['artist']}."
+                else:
+                    reply = "Nothing is playing right now."
+                print(f"[APPLEMUSIC_FASTPATH] '{reply}'")
+                await ws_server.broadcast({"type": "reply", "text": reply})
+                synthesize_speech(reply)
+                await ws_server.broadcast({"type": "done"})
+                return
+            except Exception as e:
+                print(f"[AppleMusic] What's playing failed: {e}")
 
     # =========================================================================
     # TIME / DATE FAST-PATH (no GPT round-trip needed)
@@ -334,6 +416,52 @@ async def process_transcript_async(text: str):
             return
         except Exception as e:
             print(f"[EMAIL] Failed: {e}")
+
+    # =========================================================================
+    # APPLE MUSIC VOICE COMMANDS
+    # =========================================================================
+    _AM_PLAY  = ["play music", "play apple music", "resume music", "resume the music", "start music", "unpause music"]
+    _AM_PAUSE = ["pause music", "pause the music", "stop music", "stop the music"]
+    _AM_NEXT  = ["skip", "next song", "next track", "skip song", "skip this"]
+    _AM_PREV  = ["previous song", "previous track", "last song", "go back to previous"]
+    _AM_VOLUP = ["volume up", "louder", "turn it up", "increase volume"]
+    _AM_VOLDN = ["volume down", "quieter", "turn it down", "decrease volume"]
+
+    am_reply = None
+    try:
+        from music.apple_music_script import (
+            play as am_play, pause as am_pause,
+            next_track as am_next, previous_track as am_prev,
+            set_volume as am_vol, get_volume as am_getvol,
+        )
+        if any(k in lower for k in _AM_PLAY):
+            await asyncio.to_thread(am_play)
+            am_reply = "Playing."
+        elif any(k in lower for k in _AM_PAUSE):
+            await asyncio.to_thread(am_pause)
+            am_reply = "Paused."
+        elif any(k in lower for k in _AM_NEXT):
+            await asyncio.to_thread(am_next)
+            am_reply = "Next track."
+        elif any(k in lower for k in _AM_PREV):
+            await asyncio.to_thread(am_prev)
+            am_reply = "Previous track."
+        elif any(k in lower for k in _AM_VOLUP):
+            cur = await asyncio.to_thread(am_getvol)
+            await asyncio.to_thread(am_vol, min(100, cur + 15))
+            am_reply = "Volume up."
+        elif any(k in lower for k in _AM_VOLDN):
+            cur = await asyncio.to_thread(am_getvol)
+            await asyncio.to_thread(am_vol, max(0, cur - 15))
+            am_reply = "Volume down."
+    except Exception as e:
+        print(f"[AppleMusic] Voice command error: {e}")
+
+    if am_reply:
+        await ws_server.broadcast({"type": "reply", "text": am_reply})
+        synthesize_speech(am_reply)
+        await ws_server.broadcast({"type": "done"})
+        return
 
     # =========================================================================
     # VISION: "what is this?" / "identify this" / etc.
@@ -425,6 +553,8 @@ async def process_transcript_async(text: str):
             await ws_server.broadcast({"type": "navigate", "target": "app", "app": "settings"})
         elif "open vision" in lower:
             await ws_server.broadcast({"type": "navigate", "target": "app", "app": "vision"})
+        elif "open music" in lower:
+            await ws_server.broadcast({"type": "navigate", "target": "app", "app": "music"})
         elif "show me the briefing" in lower:
             await ws_server.broadcast({"type": "navigate", "target": "app", "app": "briefing"})
 
@@ -548,6 +678,7 @@ async def initialize():
     ws_server.set_light_control_handler(handle_light_control)
     ws_server.set_youtube_handler(handle_youtube_message)
     ws_server.set_vision_handler(handle_vision_query)
+    ws_server.set_apple_music_handler(handle_apple_music_control)
     print("[✓] WebSocket server started on port 8765")
 
     # =========================================================================
@@ -561,6 +692,13 @@ async def initialize():
     # =========================================================================
     # Tapo lights ready
     print("[✓] Tapo light service ready")
+
+    # =========================================================================
+    # 2.1) Apple Music poller
+    # =========================================================================
+    global apple_music_poll_task
+    apple_music_poll_task = asyncio.create_task(apple_music_poll_loop())
+    print("[✓] Apple Music poller started (polling every 3 seconds)")
 
     # =========================================================================
     # 2.5) Gesture control (camera + hand tracking)
