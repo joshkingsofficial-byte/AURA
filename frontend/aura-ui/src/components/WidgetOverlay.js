@@ -230,8 +230,9 @@ export default function WidgetOverlay({ isListening, isThinking, spotifyData, sc
         pointerEvents: 'none',
       }}
     >
+      {/* ── Info widgets: only on idle screen ── */}
       {/* ── Top-left: Clock ── */}
-      <div
+      {screen === 'idle' && <div
         style={{
           position: 'absolute',
           top: '32px',
@@ -275,20 +276,20 @@ export default function WidgetOverlay({ isListening, isThinking, spotifyData, sc
         >
           {date}
         </div>
-      </div>
+      </div>}
 
       {/* ── Top-right: Weather ── */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '32px',
-          right: '32px',
-          ...CARD,
-          padding: '20px 24px 18px',
-          minWidth: '160px',
-        }}
-      >
-        {weather ? (
+      {screen === 'idle' && weather && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '32px',
+            right: '32px',
+            ...CARD,
+            padding: '20px 24px 18px',
+            minWidth: '160px',
+          }}
+        >
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
             <WeatherGlyph code={weather.code} />
             <div
@@ -303,140 +304,75 @@ export default function WidgetOverlay({ isListening, isThinking, spotifyData, sc
               {weather.temp}&deg;
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div
-                style={{ fontSize: '10px', letterSpacing: '0.25em', color: GOLD_DIM, fontWeight: 300 }}
-              >
+              <div style={{ fontSize: '10px', letterSpacing: '0.25em', color: GOLD_DIM, fontWeight: 300 }}>
                 {weather.desc}
               </div>
-              <div
-                style={{ fontSize: '9px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.2)', marginTop: '3px' }}
-              >
+              <div style={{ fontSize: '9px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.2)', marginTop: '3px' }}>
                 {weather.wind} KM/H
               </div>
             </div>
           </div>
-        ) : (
-          <div
-            style={{ fontSize: '10px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.15)', textAlign: 'right' }}
-          >
-            LOADING...
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── Middle-right: Now Playing ── */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '50%',
-          right: '32px',
-          transform: 'translateY(-50%)',
-          ...CARD,
-          padding: '20px',
-          width: '260px',
-        }}
-      >
+      {screen === 'idle' && nowPlaying && (
         <div
           style={{
-            fontSize: '9px',
-            letterSpacing: '0.3em',
-            color: 'rgba(255,255,255,0.2)',
-            marginBottom: '16px',
+            position: 'absolute',
+            top: '50%',
+            right: '32px',
+            transform: 'translateY(-50%)',
+            ...CARD,
+            padding: '20px',
+            width: '260px',
           }}
         >
-          NOW PLAYING
-        </div>
-
-        {/* Album art */}
-        <div
-          style={{
-            width: '120px',
-            height: '120px',
-            borderRadius: '12px',
-            overflow: 'hidden',
-            margin: '0 auto 16px',
-            background: 'rgba(200,169,110,0.06)',
-            border: '1px solid rgba(200,169,110,0.12)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {nowPlaying && spotifyData.album_art ? (
-            <img
-              src={spotifyData.album_art}
-              alt=""
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          ) : (
-            <div
-              style={{
-                fontSize: '36px',
-                color: GOLD_DIM,
-                fontWeight: 100,
-                lineHeight: 1,
-                userSelect: 'none',
-              }}
-            >
-              &#9834;
-            </div>
-          )}
-        </div>
-
-        {/* Track info */}
-        {nowPlaying ? (
-          <>
-            <div
-              style={{
-                fontSize: '13px',
-                fontWeight: 300,
-                color: GOLD,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                textAlign: 'center',
-              }}
-            >
-              {spotifyData.track}
-            </div>
-            <div
-              style={{
-                fontSize: '11px',
-                color: 'rgba(200,169,110,0.5)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                textAlign: 'center',
-                marginTop: '4px',
-              }}
-            >
-              {spotifyData.artist}
-            </div>
-            <div
-              style={{
-                fontSize: '9px',
-                letterSpacing: '0.3em',
-                color: 'rgba(255,255,255,0.2)',
-                textAlign: 'center',
-                marginTop: '10px',
-              }}
-            >
-              PLAYING
-            </div>
-          </>
-        ) : (
           <div
             style={{
-              fontSize: '10px',
-              letterSpacing: '0.2em',
-              color: 'rgba(255,255,255,0.15)',
-              textAlign: 'center',
+              fontSize: '9px',
+              letterSpacing: '0.3em',
+              color: 'rgba(255,255,255,0.2)',
+              marginBottom: '16px',
             }}
           >
-            NOTHING PLAYING
+            NOW PLAYING
           </div>
-        )}
-      </div>
+
+          <div
+            style={{
+              width: '120px',
+              height: '120px',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              margin: '0 auto 16px',
+              background: 'rgba(200,169,110,0.06)',
+              border: '1px solid rgba(200,169,110,0.12)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {spotifyData.album_art ? (
+              <img src={spotifyData.album_art} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{ fontSize: '36px', color: GOLD_DIM, fontWeight: 100, lineHeight: 1, userSelect: 'none' }}>
+                &#9834;
+              </div>
+            )}
+          </div>
+
+          <div style={{ fontSize: '13px', fontWeight: 300, color: GOLD, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center' }}>
+            {spotifyData.track}
+          </div>
+          <div style={{ fontSize: '11px', color: 'rgba(200,169,110,0.5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center', marginTop: '4px' }}>
+            {spotifyData.artist}
+          </div>
+          <div style={{ fontSize: '9px', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.2)', textAlign: 'center', marginTop: '10px' }}>
+            PLAYING
+          </div>
+        </div>
+      )}
 
       {/* ── Center: Listening / Thinking orb ── */}
       {isActive && <ListeningOrb isListening={isListening} />}
