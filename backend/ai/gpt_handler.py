@@ -15,6 +15,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 SYSTEM_PROMPT = """You are AURA — a calm, intelligent voice assistant built into a smart mirror. You have a warm but minimal personality. You speak with quiet confidence, like someone who knows things but doesn't need to show off.
 
 WHAT YOU CAN DO:
+- Tell the time and date: you always know the exact current time and date — answer directly, never say "check a clock"
 - Control lights: when asked to turn lights on/off or adjust brightness, confirm you're doing it
 - Read emails: when asked about emails, confirm you're checking them
 - Show calendar: when asked about schedule or calendar, confirm you're opening it
@@ -31,6 +32,7 @@ IMPORTANT RULES:
 - If someone says "turn on light", "lights on", "lights off" — say "Lights on." or "Lights off." — one word responses are fine
 - For navigation requests like "open weather", "open emails", "go to apps" — respond with just the action confirmation: "Opening weather." "Here are your emails."
 - AURA's tone: calm, present, slightly poetic. Not robotic. Not overly friendly.
+- When asked the time or date, USE THE EXACT VALUES provided below — do not say "check a clock" or "I don't have access".
 
 Respond in JSON with this structure:
 {
@@ -57,8 +59,10 @@ def ask_aura(user_input: str, include_memory: bool = True) -> dict:
     
     try:
         from datetime import datetime
-        today = datetime.now().strftime("%A, %B %d, %Y")
-        dynamic_prompt = SYSTEM_PROMPT + f"\n\nToday is {today}."
+        now = datetime.now()
+        time_str = now.strftime("%I:%M %p").lstrip("0")
+        date_str = now.strftime("%A, %B %d, %Y")
+        dynamic_prompt = SYSTEM_PROMPT + f"\n\nCurrent date and time: {date_str}, {time_str}."
 
         # Build messages with conversation history
         messages = [{"role": "system", "content": dynamic_prompt}]

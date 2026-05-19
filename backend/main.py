@@ -268,6 +268,38 @@ async def process_transcript_async(text: str):
             # Fall through to normal GPT path if fast-path fails
 
     # =========================================================================
+    # TIME / DATE FAST-PATH (no GPT round-trip needed)
+    # =========================================================================
+    from datetime import datetime as _dt
+    _now = _dt.now()
+
+    time_keys = [
+        "what time", "what's the time", "whats the time",
+        "tell me the time", "current time", "what time is it",
+    ]
+    date_keys = [
+        "what date", "what day", "what's today", "whats today",
+        "today's date", "what's the date", "whats the date",
+        "what day is it", "what's the day",
+    ]
+
+    if any(k in lower for k in time_keys):
+        reply = _now.strftime("It's %-I:%M %p.")
+        print(f"[TIME_FASTPATH] '{reply}'")
+        await ws_server.broadcast({"type": "reply", "text": reply})
+        synthesize_speech(reply)
+        await ws_server.broadcast({"type": "done"})
+        return
+
+    if any(k in lower for k in date_keys):
+        reply = _now.strftime("Today is %A, %B %-d.")
+        print(f"[DATE_FASTPATH] '{reply}'")
+        await ws_server.broadcast({"type": "reply", "text": reply})
+        synthesize_speech(reply)
+        await ws_server.broadcast({"type": "done"})
+        return
+
+    # =========================================================================
     # EMAIL: "any emails?" / "any important emails?" / "check my emails"
     # =========================================================================
     email_keys = [
