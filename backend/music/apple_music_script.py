@@ -4,13 +4,14 @@ All functions are synchronous — wrap with asyncio.to_thread() from async calle
 """
 
 import subprocess
+import tempfile
 import base64
 import os
 from typing import Optional, Dict, Any
 
 
 def _run(script: str) -> str:
-    """Run an AppleScript snippet; return stdout stripped."""
+    """Run a single-line AppleScript snippet via -e; return stdout stripped."""
     try:
         r = subprocess.run(
             ["osascript", "-e", script],
@@ -22,6 +23,33 @@ def _run(script: str) -> str:
     except Exception as e:
         print(f"[AppleMusic] osascript error: {e}")
         return ""
+
+
+def _run_file(script: str) -> str:
+    """Write script to a temp file and run with osascript — avoids -e parsing issues."""
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".applescript", delete=False
+        ) as f:
+            f.write(script)
+            tmp = f.name
+        r = subprocess.run(
+            ["osascript", tmp],
+            capture_output=True, text=True, timeout=10
+        )
+        if r.returncode != 0 and r.stderr.strip():
+            print(f"[AppleMusic] osascript stderr: {r.stderr.strip()}")
+        return r.stdout.strip()
+    except Exception as e:
+        print(f"[AppleMusic] osascript error: {e}")
+        return ""
+    finally:
+        if tmp and os.path.exists(tmp):
+            try:
+                os.unlink(tmp)
+            except Exception:
+                pass
 
 
 # ── Playback controls ────────────────────────────────────────────────────────
@@ -58,33 +86,27 @@ def get_volume() -> int:
 
 def get_current_track() -> Optional[Dict[str, Any]]:
     """Return dict with title/artist/album/is_playing/volume, or None if stopped."""
-    script = '''
--- Check process first to avoid launching Music.app
-tell application "System Events"
-    if not (exists process "Music") then return ""
-end tell
+    script = """\
 tell application "Music"
     try
-        if player state is playing or player state is paused then
+        set ps to player state
+        if ps is playing or ps is paused then
             set t to name of current track
             set a to artist of current track
             set al to album of current track
             set vol to sound volume
-            if player state is playing then
-                set st to "playing"
-            else
-                set st to "paused"
+            if ps is playing then
+                return t & "|||" & a & "|||" & al & "|||" & (vol as string) & "|||playing"
             end if
-            return t & "|||" & a & "|||" & al & "|||" & (vol as string) & "|||" & st
+            return t & "|||" & a & "|||" & al & "|||" & (vol as string) & "|||paused"
         end if
-    on error errMsg
-        log errMsg
+        return ""
+    on error
         return ""
     end try
 end tell
-return ""
-'''
-    raw = _run(script)
+"""
+    raw = _run_file(script)
     if not raw:
         return None
     parts = raw.split("|||")
@@ -105,29 +127,31 @@ def get_album_art_b64() -> Optional[str]:
     Writes to a temp file via AppleScript, reads back in Python.
     Returns None if artwork is unavailable or extraction fails.
     """
-    tmp = "/tmp/aura_music_art.jpg"
-    script = f'''
+    art_tmp = "/tmp/aura_music_art.jpg"
+    script = f"""\
 tell application "Music"
-    if player state is playing or player state is paused then
-        try
+    try
+        set ps to player state
+        if ps is playing or ps is paused then
             set artData to raw data of artwork 1 of current track
-            set f to open for access POSIX file "{tmp}" with write permission
+            set f to open for access POSIX file "{art_tmp}" with write permission
             set eof of f to 0
             write artData to f
             close access f
             return "ok"
-        on error
-            return ""
-        end try
-    end if
+        end if
+        return ""
+    on error
+        return ""
+    end try
 end tell
-'''
-    result = _run(script)
-    if result == "ok" and os.path.exists(tmp):
+"""
+    result = _run_file(script)
+    if result == "ok" and os.path.exists(art_tmp):
         try:
-            with open(tmp, "rb") as fh:
+            with open(art_tmp, "rb") as fh:
                 data = fh.read()
-            os.unlink(tmp)
+            os.unlink(art_tmp)
             if data:
                 return base64.b64encode(data).decode("utf-8")
         except Exception as e:

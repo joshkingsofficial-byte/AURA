@@ -25,7 +25,7 @@ from services.music_spotify import SpotifyMusicClient
 # from services.smart_home import SmartHomeClient
 from services.spotify_poller import SpotifyPoller
 from services.tapo_light import turn_on as light_on, turn_off as light_off, set_brightness
-from camera.gesture_bridge import GestureBridge
+# from camera.gesture_bridge import GestureBridge  # disabled: camera conflict
 
 # Globals
 ws_server: WebSocketServer = None
@@ -33,7 +33,7 @@ wake_listener: WakeWordListener = None
 spotify_client: SpotifyMusicClient = None
 # smart_home: SmartHomeClient = None
 spotify_poller: SpotifyPoller = None
-gesture_bridge: GestureBridge = None
+gesture_bridge = None  # GestureBridge disabled
 main_loop: asyncio.AbstractEventLoop = None
 apple_music_poll_task = None
 
@@ -721,19 +721,10 @@ async def initialize():
     print("[✓] Apple Music poller started (polling every 3 seconds)")
 
     # =========================================================================
-    # 2.5) Gesture control (camera + hand tracking)
+    # 2.5) Gesture control — DISABLED (camera conflict with VisionOverlay)
     # =========================================================================
-    try:
-        gesture_bridge = GestureBridge(websocket_handler=ws_server.broadcast, loop=main_loop)
-        if gesture_bridge.initialize():
-            gesture_bridge.start()
-            print("[✓] Gesture control started (camera + hand tracking)")
-        else:
-            print("[!] Gesture control failed to initialize (camera unavailable?)")
-            gesture_bridge = None
-    except Exception as e:
-        print(f"[!] Gesture control init failed: {e}")
-        gesture_bridge = None
+    # gesture_bridge = GestureBridge(websocket_handler=ws_server.broadcast, loop=main_loop)
+    print("[–] Gesture control disabled")
 
     # =========================================================================
     # 3) Spotify client + background poller
