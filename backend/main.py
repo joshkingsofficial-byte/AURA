@@ -308,12 +308,9 @@ async def process_transcript_async(text: str):
     # =========================================================================
     if any(p in lower for p in VISION_PHRASES):
         print(f"[Vision] Voice trigger: '{text}'")
-        # Navigate to vision app, then ask frontend to capture a frame
-        await ws_server.broadcast({"type": "navigate", "target": "app", "app": "vision"})
-        # Brief pause so the app mounts and its camera starts before vision_request arrives
-        await asyncio.sleep(1.5)
+        # Fire overlay directly — no navigation, no sleep.
+        # VisionOverlay is always mounted in App.js and handles its own camera.
         await ws_server.broadcast({"type": "vision_request", "query": text})
-        # Result path is handled in handle_vision_query when frontend sends vision_query back
         await ws_server.broadcast({"type": "done"})
         return
 

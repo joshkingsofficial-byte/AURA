@@ -4,6 +4,7 @@ import IdleScreen from "./screens/IdleScreen";
 import HomePage from "./screens/HomePage";
 import AppView from "./screens/AppView";
 import WidgetOverlay from "./components/WidgetOverlay";
+import VisionOverlay from "./components/VisionOverlay";
 import { APPS } from "./components/AppGrid";
 
 const WS_URL = "ws://localhost:8765";
@@ -258,6 +259,7 @@ export default function App() {
         spotifyData={spotifyData}
         screen={screen}
       />
+      <VisionOverlay />
 
       {screen === "idle" && (
         <IdleScreen
