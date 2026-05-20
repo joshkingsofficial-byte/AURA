@@ -6,6 +6,7 @@ AURA Voice Assistant - Main Entry Point
 import os
 import sys
 import asyncio
+import re
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -68,6 +69,27 @@ VISION_PHRASES = [
     "describe what you see", "tell me about this",
     "can you see this", "do you see this",
 ]
+
+
+# Named Tapo light presets. Each entry has brightness (1-100) and either
+# color_temp (Kelvin, white tones) or hue/sat (colored light) — never both.
+LIGHT_MODES = {
+    "hope":    {"brightness": 65,  "hue": 35,   "sat": 75},   # warm golden
+    "hawk":    {"brightness": 100, "color_temp": 6000},         # sharp cool white
+    "focus":   {"brightness": 85,  "color_temp": 5000},         # clean neutral
+    "relax":   {"brightness": 40,  "color_temp": 2700},         # soft warm
+    "sleep":   {"brightness": 8,   "hue": 10,   "sat": 60},   # dim red-warm
+    "night":   {"brightness": 5,   "color_temp": 2200},         # minimal warm
+    "morning": {"brightness": 70,  "color_temp": 4200},         # fresh daylight
+    "chill":   {"brightness": 35,  "hue": 220,  "sat": 55},   # soft blue
+    "vibe":    {"brightness": 50,  "hue": 280,  "sat": 70},   # purple
+    "study":   {"brightness": 90,  "color_temp": 5000},         # bright neutral
+    "dim":     {"brightness": 20,  "color_temp": 2700},         # low warm
+    "bright":  {"brightness": 100, "color_temp": 5500},         # max bright
+    "reading": {"brightness": 80,  "color_temp": 3500},         # warm neutral
+    "sunset":  {"brightness": 55,  "hue": 25,   "sat": 85},   # deep amber
+    "romance": {"brightness": 30,  "hue": 350,  "sat": 70},   # soft red-pink
+}
 
 
 async def handle_vision_query(msg: dict):
@@ -541,13 +563,44 @@ async def process_transcript_async(text: str):
     # =========================================================================
     # LIGHTS
     # =========================================================================
-    light_on_keys = ["turn on the light", "turn on lights", "lights on", "switch on the light"]
-    light_off_keys = ["turn off the light", "turn off lights", "lights off", "switch off the light"]
+    async def _apply_light_mode(mode_name: str) -> str:
+        """Apply a named preset to the Tapo bulb. Returns reply string."""
+        preset = LIGHT_MODES.get(mode_name)
+        if not preset:
+            return ""
+        try:
+            from tapo import ApiClient as _TapoClient
+            _client = _TapoClient(os.getenv("TAPO_EMAIL"), os.getenv("TAPO_PASSWORD"))
+            _dev = await _client.l530(os.getenv("TAPO_IP"))
+            await _dev.on()
+            if "color_temp" in preset:
+                await _dev.set_color_temperature(preset["color_temp"])
+            else:
+                await _dev.set_hue_saturation(preset["hue"], preset["sat"])
+            await _dev.set_brightness(preset["brightness"])
+            print(f"[Tapo] Mode '{mode_name}' applied: {preset}")
+            return f"{mode_name.capitalize()} mode."
+        except Exception as e:
+            print(f"[Tapo] Mode error: {e}")
+            return "Your lights are offline."
+
+    # Named mode: "activate hope mode", "hope mode", "enable focus mode", etc.
+    _mode_match = re.search(r'\b(\w+)\s+mode\b', lower)
+    if _mode_match:
+        _mode_name = _mode_match.group(1)
+        if _mode_name in LIGHT_MODES:
+            reply = await _apply_light_mode(_mode_name)
+            await ws_server.broadcast({"type": "reply", "text": reply})
+            synthesize_speech(reply)
+            await ws_server.broadcast({"type": "done"})
+            return
+
+    light_on_keys  = ["turn on the light", "turn on lights", "lights on", "switch on the light", "light on"]
+    light_off_keys = ["turn off the light", "turn off lights", "lights off", "switch off the light", "light off"]
 
     if any(k in lower for k in light_on_keys):
         try:
             from tapo import ApiClient
-            import os
             client = ApiClient(os.getenv("TAPO_EMAIL"), os.getenv("TAPO_PASSWORD"))
             device = await client.l530(os.getenv("TAPO_IP"))
             await device.on()
@@ -564,7 +617,6 @@ async def process_transcript_async(text: str):
     if any(k in lower for k in light_off_keys):
         try:
             from tapo import ApiClient
-            import os
             client = ApiClient(os.getenv("TAPO_EMAIL"), os.getenv("TAPO_PASSWORD"))
             device = await client.l530(os.getenv("TAPO_IP"))
             await device.off()
