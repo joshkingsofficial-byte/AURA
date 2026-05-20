@@ -422,9 +422,35 @@ async def process_transcript_async(text: str):
     # =========================================================================
     # APPLE MUSIC VOICE COMMANDS
     # =========================================================================
+    import re as _re
+
+    def _extract_music_search(q: str) -> str:
+        """Return artist/song query if this looks like a music search, else ''."""
+        # Ordered most-specific → least-specific so "play music by X" beats "play X"
+        _patterns = [
+            r"^play\s+(?:some\s+)?(?:music|songs?|tracks?)\s+(?:by|from)\s+(.+)$",
+            r"^play\s+(?:music|songs?|tracks?)\s+(?:by|from)\s+(.+)$",
+            r"^put\s+on\s+(?:some\s+)?(.+)$",
+            r"^play\s+some\s+(.+)$",
+            r"^play\s+(.+)$",
+        ]
+        # Words that are NOT search queries — map to control commands above
+        _NOT_QUERY = {"music", "song", "songs", "track", "tracks", "it", "that",
+                      "this", "something", "anything", "apple music", "the music",
+                      "a song", "a track"}
+        for pat in _patterns:
+            m = _re.match(pat, q.strip())
+            if m:
+                candidate = m.group(1).strip()
+                if candidate and candidate not in _NOT_QUERY:
+                    return candidate
+        return ""
+
+    # CONTROL: generic play/resume — no artist/song in the command
     _AM_PLAY  = ["play music", "play apple music", "resume music", "resume the music",
                  "start music", "unpause music", "unpause the music",
-                 "play the music", "play song", "play it"]
+                 "play the music", "play song", "play it",
+                 "resume", "continue", "continue playing", "start playing", "keep playing"]
     _AM_PAUSE = ["pause music", "pause the music", "stop music", "stop the music",
                  "pause song", "pause it", "stop playing"]
     _AM_NEXT  = ["skip", "next song", "next track", "skip song", "skip this",
@@ -438,6 +464,7 @@ async def process_transcript_async(text: str):
 
     # Determine intent from patterns before any execution (so exceptions don't break routing)
     _am_intent = None
+    _am_search_query = ""
     if any(k in lower for k in _AM_PLAY):
         _am_intent = "play"
     elif any(k in lower for k in _AM_PAUSE):
@@ -450,12 +477,17 @@ async def process_transcript_async(text: str):
         _am_intent = "volup"
     elif any(k in lower for k in _AM_VOLDN):
         _am_intent = "voldn"
+    else:
+        _am_search_query = _extract_music_search(lower)
+        if _am_search_query:
+            _am_intent = "search"
 
     if _am_intent:
-        print(f"[AppleMusic] Voice intent: {_am_intent}")
+        print(f"[AppleMusic] Voice intent: {_am_intent} query='{_am_search_query}'")
         _am_replies = {
             "play": "Playing.", "pause": "Paused.", "next": "Next track.",
             "prev": "Previous track.", "volup": "Volume up.", "voldn": "Volume down.",
+            "search": f"Playing {_am_search_query}.",
         }
         am_reply = _am_replies[_am_intent]
         try:
@@ -463,6 +495,7 @@ async def process_transcript_async(text: str):
                 play as am_play, pause as am_pause,
                 next_track as am_next, previous_track as am_prev,
                 set_volume as am_vol, get_volume as am_getvol,
+                search_and_play as am_search,
             )
             if _am_intent == "play":
                 await asyncio.to_thread(am_play)
@@ -478,6 +511,12 @@ async def process_transcript_async(text: str):
             elif _am_intent == "voldn":
                 cur = await asyncio.to_thread(am_getvol)
                 await asyncio.to_thread(am_vol, max(0, cur - 15))
+            elif _am_intent == "search":
+                result = await asyncio.to_thread(am_search, _am_search_query)
+                if result == "no_results":
+                    am_reply = f"I couldn't find {_am_search_query} in your library."
+                elif result == "error":
+                    am_reply = f"Couldn't search Apple Music."
         except Exception as e:
             print(f"[AppleMusic] Voice command execution error: {e}")
         await ws_server.broadcast({"type": "reply", "text": am_reply})

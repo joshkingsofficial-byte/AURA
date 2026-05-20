@@ -82,6 +82,31 @@ def get_volume() -> int:
         return 50
 
 
+# ── Search & play ─────────────────────────────────────────────────────────────
+
+def search_and_play(query: str) -> str:
+    """Search Apple Music library for query and play first result.
+    Returns 'ok', 'no_results', or 'error'."""
+    safe = query.replace('"', ' ').replace('\\', ' ').strip()
+    if not safe:
+        return "error"
+    script = f"""\
+tell application "Music"
+    try
+        set theResults to search (get library playlist 1) for "{safe}"
+        if (count of theResults) > 0 then
+            play item 1 of theResults
+            return "ok"
+        end if
+        return "no_results"
+    on error
+        return "error"
+    end try
+end tell
+"""
+    return _run_file(script)
+
+
 # ── Track info ────────────────────────────────────────────────────────────────
 
 def get_current_track() -> Optional[Dict[str, Any]]:
