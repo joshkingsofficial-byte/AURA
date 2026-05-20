@@ -62,8 +62,11 @@ VISION_PHRASES = [
     "identify this", "identify this object",
     "what do you see", "what can you see",
     "look at this", "analyze this", "scan this",
-    "what am i holding", "what's in front of you",
+    "what am i holding", "what am i carrying",
+    "what's in my hand", "whats in my hand", "what is in my hand",
+    "what's in front of you", "what's in front of me",
     "describe what you see", "tell me about this",
+    "can you see this", "do you see this",
 ]
 
 
