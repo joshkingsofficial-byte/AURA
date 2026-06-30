@@ -1,18 +1,8 @@
-import os
-import pickle
-from datetime import datetime, timezone
-from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-
-TOKEN_FILE = os.path.join(os.path.dirname(__file__), '..', 'gmail_token.pickle')
+from services.gmail_service import get_credentials
 
 def get_calendar_service():
-    creds = None
-    if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE, 'rb') as token:
-            creds = pickle.load(token)
-    if creds and creds.expired and creds.refresh_token:
-        creds.refresh(Request())
+    creds = get_credentials()
     return build('calendar', 'v3', credentials=creds)
 
 def get_upcoming_events(max_results=10):

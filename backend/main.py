@@ -175,10 +175,12 @@ def normalize_stt_errors(routing: str) -> tuple:
 
 # ─── Tapo helpers ─────────────────────────────────────────────────────────────
 
+TAPO_TIMEOUT_SECONDS = 5
+
 async def _get_tapo_device():
     from tapo import ApiClient
     client = ApiClient(os.getenv("TAPO_EMAIL"), os.getenv("TAPO_PASSWORD"))
-    return await client.l530(os.getenv("TAPO_IP"))
+    return await asyncio.wait_for(client.l530(os.getenv("TAPO_IP")), timeout=TAPO_TIMEOUT_SECONDS)
 
 
 async def _apply_light_preset(mode_name: str) -> str:

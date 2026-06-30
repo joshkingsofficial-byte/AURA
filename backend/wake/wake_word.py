@@ -59,13 +59,16 @@ class WakeWordListener:
             return
 
         self.is_listening = False
-        if self.thread:
+        if self.thread and self.thread is not threading.current_thread():
             self.thread.join()
+        self._cleanup()
+        print("[Wake] Listener stopped and resources cleaned up.")
+
+    def _cleanup(self):
         self.stream.stop_stream()
         self.stream.close()
         self.porcupine.delete()
         self.pa.terminate()
-        print("[Wake] Listener stopped and resources cleaned up.")
 
     def _listen(self):
         """Internal method to listen for the wake word."""
@@ -80,8 +83,13 @@ class WakeWordListener:
                 if result >= 0:
                     print("[Wake] Wake word detected!")
                     if self.callback:
-                        self.callback()
+                        try:
+                            self.callback()
+                        except Exception as e:
+                            print(f"[Wake] Error handling wake callback: {e}")
         except Exception as e:
             print(f"[Wake] Error in listener: {e}")
         finally:
-            self.stop()
+            if self.is_listening:
+                self.is_listening = False
+                self._cleanup()

@@ -11,7 +11,8 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googlea
 CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), '..', 'gmail_credentials.json')
 TOKEN_FILE = os.path.join(os.path.dirname(__file__), '..', 'gmail_token.pickle')
 
-def get_gmail_service():
+def get_credentials():
+    """Load (or bootstrap) shared OAuth credentials for Gmail + Calendar."""
     creds = None
     if os.path.exists(TOKEN_FILE):
         with open(TOKEN_FILE, 'rb') as token:
@@ -24,7 +25,10 @@ def get_gmail_service():
             creds = flow.run_local_server(port=0)
         with open(TOKEN_FILE, 'wb') as token:
             pickle.dump(creds, token)
-    return build('gmail', 'v1', credentials=creds)
+    return creds
+
+def get_gmail_service():
+    return build('gmail', 'v1', credentials=get_credentials())
 
 def get_unread_emails(max_results=5):
     try:
