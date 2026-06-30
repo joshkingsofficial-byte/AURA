@@ -15,6 +15,7 @@ class WebSocketServer:
         self.youtube_handler = None
         self.vision_handler = None
         self.apple_music_handler = None
+        self.timer_control_handler = None
 
     def set_message_handler(self, handler):
         self.message_handler = handler
@@ -30,6 +31,9 @@ class WebSocketServer:
 
     def set_apple_music_handler(self, handler):
         self.apple_music_handler = handler
+
+    def set_timer_control_handler(self, handler):
+        self.timer_control_handler = handler
 
     async def handler(self, websocket):
         client_info = f"{websocket.remote_address}"
@@ -54,6 +58,8 @@ class WebSocketServer:
                     await self.vision_handler(msg)
                 elif msg_type == "apple_music_control" and self.apple_music_handler:
                     await self.apple_music_handler(msg)
+                elif msg_type == "timer_control" and self.timer_control_handler:
+                    await self.timer_control_handler(msg)
         except websockets.exceptions.ConnectionClosed:
             print(f"[WS] Client disconnected: {client_info}")
         finally:

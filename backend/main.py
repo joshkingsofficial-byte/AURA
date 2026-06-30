@@ -37,6 +37,10 @@ camera_manager: CameraManager = None
 main_loop: asyncio.AbstractEventLoop = None
 apple_music_poll_task = None
 
+# Active countdown timers: id -> {"label": str, "duration": int, "ends_at": float, "task": asyncio.Task}
+active_timers: dict = {}
+_timer_counter = 0
+
 # Lightweight in-memory light state for relative adjustments
 current_light_state: dict = {
     "on": None,
@@ -313,7 +317,7 @@ async def _reply_whats_playing():
         print(f"[AppleMusic] What's playing failed: {e}")
         reply = "I couldn't check what's playing."
     await ws_server.broadcast({"type": "reply", "text": reply})
-    synthesize_speech(reply)
+    await asyncio.to_thread(synthesize_speech, reply)
     await ws_server.broadcast({"type": "done"})
 
 
@@ -388,7 +392,7 @@ async def fast_path_music(routing: str) -> bool:
         print(f"[AppleMusic] Fast-path error: {e}")
 
     await ws_server.broadcast({"type": "reply", "text": reply})
-    synthesize_speech(reply)
+    await asyncio.to_thread(synthesize_speech, reply)
     await ws_server.broadcast({"type": "done"})
     return True
 
@@ -428,7 +432,7 @@ async def fast_path_lighting(routing: str) -> bool:
             print(f"[ROUTER] fast-path lighting: preset '{mode_name}'")
             reply = await _apply_light_preset(mode_name)
             await ws_server.broadcast({"type": "reply", "text": reply})
-            synthesize_speech(reply)
+            await asyncio.to_thread(synthesize_speech, reply)
             await ws_server.broadcast({"type": "done"})
             return True
 
@@ -440,7 +444,7 @@ async def fast_path_lighting(routing: str) -> bool:
                 print(f"[ROUTER] fast-path lighting: preset '{name}' (action word)")
                 reply = await _apply_light_preset(name)
                 await ws_server.broadcast({"type": "reply", "text": reply})
-                synthesize_speech(reply)
+                await asyncio.to_thread(synthesize_speech, reply)
                 await ws_server.broadcast({"type": "done"})
                 return True
 
@@ -455,7 +459,7 @@ async def fast_path_lighting(routing: str) -> bool:
             print(f"[Tapo] Error: {e}")
             reply = "I couldn't reach the lights."
         await ws_server.broadcast({"type": "reply", "text": reply})
-        synthesize_speech(reply)
+        await asyncio.to_thread(synthesize_speech, reply)
         await ws_server.broadcast({"type": "done"})
         return True
 
@@ -470,7 +474,7 @@ async def fast_path_lighting(routing: str) -> bool:
             print(f"[Tapo] Error: {e}")
             reply = "I couldn't reach the lights."
         await ws_server.broadcast({"type": "reply", "text": reply})
-        synthesize_speech(reply)
+        await asyncio.to_thread(synthesize_speech, reply)
         await ws_server.broadcast({"type": "done"})
         return True
 
@@ -496,7 +500,7 @@ async def fast_path_time_date(routing: str) -> bool:
         reply = now.strftime("It's %-I:%M %p.")
         print("[ROUTER] fast-path time")
         await ws_server.broadcast({"type": "reply", "text": reply})
-        synthesize_speech(reply)
+        await asyncio.to_thread(synthesize_speech, reply)
         await ws_server.broadcast({"type": "done"})
         return True
 
@@ -504,11 +508,129 @@ async def fast_path_time_date(routing: str) -> bool:
         reply = now.strftime("Today is %A, %B %-d.")
         print("[ROUTER] fast-path date")
         await ws_server.broadcast({"type": "reply", "text": reply})
-        synthesize_speech(reply)
+        await asyncio.to_thread(synthesize_speech, reply)
         await ws_server.broadcast({"type": "done"})
         return True
 
     return False
+
+
+def _format_timer_label(seconds: int) -> str:
+    minutes, secs = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    parts = []
+    if hours:
+        parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+    if minutes:
+        parts.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
+    if secs and not hours:
+        parts.append(f"{secs} second{'s' if secs != 1 else ''}")
+    return " ".join(parts) or "0 second"
+
+
+async def _timer_countdown(timer_id: str, seconds: int):
+    """Sleep for the timer duration, then announce completion."""
+    global ws_server
+    try:
+        await asyncio.sleep(seconds)
+    except asyncio.CancelledError:
+        return
+    entry = active_timers.pop(timer_id, None)
+    if not entry:
+        return
+    reply = f"Your {entry['label']} timer is up."
+    await ws_server.broadcast({"type": "timer_done", "id": timer_id, "label": entry["label"]})
+    await ws_server.broadcast({"type": "reply", "text": reply})
+    await asyncio.to_thread(synthesize_speech, reply)
+    await ws_server.broadcast({"type": "done"})
+
+
+async def start_timer(seconds: int) -> dict:
+    """Start a countdown timer and broadcast its state. Returns the timer entry."""
+    global ws_server, _timer_counter
+    _timer_counter += 1
+    timer_id = str(_timer_counter)
+    label = _format_timer_label(seconds)
+    ends_at = asyncio.get_event_loop().time() + seconds
+    task = asyncio.create_task(_timer_countdown(timer_id, seconds))
+    active_timers[timer_id] = {"label": label, "duration": seconds, "ends_at": ends_at, "task": task}
+    await ws_server.broadcast({
+        "type": "timer_started",
+        "id": timer_id,
+        "label": label,
+        "duration": seconds,
+    })
+    return active_timers[timer_id]
+
+
+async def cancel_timer(timer_id: str = None) -> int:
+    """Cancel a specific timer, or all timers if no id given. Returns count cancelled."""
+    global ws_server
+    ids = [timer_id] if timer_id else list(active_timers.keys())
+    cancelled = 0
+    for tid in ids:
+        entry = active_timers.pop(tid, None)
+        if entry:
+            entry["task"].cancel()
+            await ws_server.broadcast({"type": "timer_cancelled", "id": tid})
+            cancelled += 1
+    return cancelled
+
+
+_TIMER_DURATION_RE = re.compile(
+    r"(\d+)\s*(hour|hr|minute|min|second|sec)s?", re.IGNORECASE
+)
+_TIMER_UNIT_SECONDS = {
+    "hour": 3600, "hr": 3600,
+    "minute": 60, "min": 60,
+    "second": 1, "sec": 1,
+}
+
+
+async def fast_path_timer(routing: str) -> bool:
+    """Handle 'set a timer for X' and 'cancel the timer' without GPT. Returns True if handled."""
+    global ws_server
+
+    if any(k in routing for k in ["cancel the timer", "cancel timer", "stop the timer", "stop timer"]):
+        count = await cancel_timer()
+        reply = "Timer cancelled." if count else "There's no timer running."
+        print("[ROUTER] fast-path timer cancel")
+        await ws_server.broadcast({"type": "reply", "text": reply})
+        await asyncio.to_thread(synthesize_speech, reply)
+        await ws_server.broadcast({"type": "done"})
+        return True
+
+    if "timer" not in routing and "alarm" not in routing:
+        return False
+    if not any(k in routing for k in ["set", "start", "for"]):
+        return False
+
+    matches = _TIMER_DURATION_RE.findall(routing)
+    if not matches:
+        return False
+
+    total_seconds = sum(int(n) * _TIMER_UNIT_SECONDS[u.lower()] for n, u in matches)
+    if total_seconds <= 0:
+        return False
+
+    entry = await start_timer(total_seconds)
+    reply = f"Timer set for {entry['label']}."
+    print(f"[ROUTER] fast-path timer: {total_seconds}s")
+    await ws_server.broadcast({"type": "reply", "text": reply})
+    await asyncio.to_thread(synthesize_speech, reply)
+    await ws_server.broadcast({"type": "done"})
+    return True
+
+
+async def handle_timer_control(msg: dict):
+    """Handle timer_control WebSocket messages from the UI."""
+    action = msg.get("action")
+    if action == "start":
+        seconds = int(msg.get("seconds", 0))
+        if seconds > 0:
+            await start_timer(seconds)
+    elif action == "cancel":
+        await cancel_timer(msg.get("id"))
 
 
 async def fast_path_email(routing: str) -> bool:
@@ -536,7 +658,7 @@ async def fast_path_email(routing: str) -> bool:
         print("[ROUTER] fast-path email")
         await ws_server.broadcast({"type": "reply", "text": reply})
         await ws_server.broadcast({"type": "navigate", "target": "app", "app": "email"})
-        synthesize_speech(reply)
+        await asyncio.to_thread(synthesize_speech, reply)
         await ws_server.broadcast({"type": "done"})
         return True
     except Exception as e:
@@ -688,7 +810,7 @@ async def execute_intent(intent: dict, routing: str, display: str) -> bool:
         print("[ROUTER] intent-router: clarify")
         msg = reply or "Could you rephrase that?"
         await ws_server.broadcast({"type": "reply", "text": msg})
-        synthesize_speech(msg)
+        await asyncio.to_thread(synthesize_speech, msg)
         await ws_server.broadcast({"type": "done"})
         return True
 
@@ -744,7 +866,7 @@ async def execute_intent(intent: dict, routing: str, display: str) -> bool:
             print(f"[AppleMusic] Intent error: {e}")
             reply = "Couldn't execute music command."
         await ws_server.broadcast({"type": "reply", "text": reply})
-        synthesize_speech(reply)
+        await asyncio.to_thread(synthesize_speech, reply)
         await ws_server.broadcast({"type": "done"})
         return True
 
@@ -785,7 +907,7 @@ async def execute_intent(intent: dict, routing: str, display: str) -> bool:
         else:
             return False
         await ws_server.broadcast({"type": "reply", "text": reply})
-        synthesize_speech(reply)
+        await asyncio.to_thread(synthesize_speech, reply)
         await ws_server.broadcast({"type": "done"})
         return True
 
@@ -798,7 +920,7 @@ async def execute_intent(intent: dict, routing: str, display: str) -> bool:
             await ws_server.broadcast({"type": "navigate", "target": target, "app": app})
             if reply:
                 await ws_server.broadcast({"type": "reply", "text": reply})
-                synthesize_speech(reply)
+                await asyncio.to_thread(synthesize_speech, reply)
             await ws_server.broadcast({"type": "done"})
             return True
 
@@ -830,12 +952,14 @@ async def process_transcript_async(text: str):
     routing, clarification = normalize_stt_errors(routing)
     if clarification:
         await ws_server.broadcast({"type": "reply", "text": clarification})
-        synthesize_speech(clarification)
+        await asyncio.to_thread(synthesize_speech, clarification)
         await ws_server.broadcast({"type": "done"})
         return
 
     # Step 4 — fast-path local commands (no GPT round-trip, no context memory)
     if await fast_path_time_date(routing):
+        return
+    if await fast_path_timer(routing):
         return
     if await fast_path_email(routing):
         return
@@ -861,7 +985,7 @@ async def process_transcript_async(text: str):
     result = ask_aura(display)
     reply  = result.get("assistant_reply", "I'm not sure how to respond.")
     await ws_server.broadcast({"type": "reply", "text": reply})
-    synthesize_speech(reply)
+    await asyncio.to_thread(synthesize_speech, reply)
     await ws_server.broadcast({"type": "done"})
 
 
@@ -895,7 +1019,7 @@ async def handle_vision_query(msg: dict):
         result = f"Vision analysis error: {e}"
 
     await ws_server.broadcast({"type": "vision_result", "text": result, "query": query})
-    synthesize_speech(result)
+    await asyncio.to_thread(synthesize_speech, result)
     await ws_server.broadcast({"type": "done"})
 
 
@@ -1135,6 +1259,7 @@ async def initialize():
     ws_server.set_youtube_handler(handle_youtube_message)
     ws_server.set_vision_handler(handle_vision_query)
     ws_server.set_apple_music_handler(handle_apple_music_control)
+    ws_server.set_timer_control_handler(handle_timer_control)
     print("[✓] WebSocket server started on port 8765")
 
     await start_http_server()
