@@ -1,26 +1,20 @@
 import React, { useState, useEffect } from 'react';
 
-export default function EmailApp() {
-  const [emails, setEmails] = useState([]);
+export default function TasksApp() {
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('http://localhost:8766/emails')
+    fetch('http://localhost:8766/tasks')
       .then(r => r.json())
-      .then(data => {
-        setEmails(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError('Could not connect to AURA backend');
-        setLoading(false);
-      });
+      .then(data => { setTasks(data); setLoading(false); })
+      .catch(() => { setError('Could not connect to AURA backend'); setLoading(false); });
   }, []);
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#c8a96e', letterSpacing: '0.3em', fontSize: '12px' }}>
-      READING YOUR MESSAGES
+      READING YOUR TASKS
     </div>
   );
 
@@ -39,45 +33,51 @@ export default function EmailApp() {
       fontFamily: 'inherit',
     }}>
       <div style={{ marginBottom: '48px' }}>
-        <div style={{ fontSize: '10px', letterSpacing: '0.4em', color: '#c8a96e', marginBottom: '8px' }}>MESSAGES</div>
+        <div style={{ fontSize: '10px', letterSpacing: '0.4em', color: '#c8a96e', marginBottom: '8px' }}>TASKS</div>
         <div style={{ fontSize: '13px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.3)' }}>
-          {emails.length} UNREAD
+          {tasks.length} PENDING
         </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: 'rgba(200,169,110,0.08)', borderRadius: '16px', overflow: 'hidden' }}>
-        {emails.length === 0 ? (
+        {tasks.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: 'rgba(200,169,110,0.4)', letterSpacing: '0.2em', fontSize: '12px' }}>
-            NO UNREAD MESSAGES
+            NOTHING TO DO
           </div>
         ) : (
-          emails.map((email, i) => (
-            <div key={email.id} style={{
+          tasks.map((task, i) => (
+            <div key={task.id} style={{
               background: 'rgba(255,255,255,0.02)',
               padding: '20px 24px',
-              borderBottom: i < emails.length - 1 ? '1px solid rgba(200,169,110,0.06)' : 'none',
+              borderBottom: i < tasks.length - 1 ? '1px solid rgba(200,169,110,0.06)' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              cursor: 'default',
               transition: 'background 0.2s',
-              cursor: 'default'
             }}
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(200,169,110,0.04)'}
             onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                <div style={{ fontSize: '11px', letterSpacing: '0.15em', color: '#c8a96e', fontWeight: 300 }}>
-                  {email.from.replace(/<.*>/, '').trim().toUpperCase()}
+              <div style={{
+                width: '8px', height: '8px', borderRadius: '50%',
+                border: '1px solid rgba(200,169,110,0.5)',
+                flexShrink: 0,
+              }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.85)', fontWeight: 200, letterSpacing: '0.02em' }}>
+                  {task.title}
                 </div>
-              </div>
-              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.85)', fontWeight: 200, marginBottom: '6px', letterSpacing: '0.02em' }}>
-                {email.subject}
-              </div>
-              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontWeight: 200, letterSpacing: '0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {email.snippet}
+                {task.due && (
+                  <div style={{ fontSize: '11px', color: 'rgba(200,169,110,0.5)', marginTop: '4px', letterSpacing: '0.1em' }}>
+                    DUE {new Date(task.due).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toUpperCase()}
+                  </div>
+                )}
               </div>
             </div>
           ))
         )}
       </div>
-
     </div>
   );
 }

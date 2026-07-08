@@ -1,8 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import AppGrid from '../components/AppGrid';
 
-function HomePage({ onAppClick, selectedAppIndex, selectionMode }) {
-  const now = new Date();
+function HomePage({ onAppClick, selectedAppIndex, selectionMode, onBack }) {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const [hovered, setHovered] = useState(false);
   const time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   const date = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
 
@@ -85,31 +90,30 @@ function HomePage({ onAppClick, selectedAppIndex, selectionMode }) {
           </div>
         </div>
 
-        {/* Nav dots */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: '8px',
-          marginTop: '24px'
-        }}>
+        {/* Back hint — tap to return to idle */}
+        <div
+          onClick={onBack}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginTop: '24px',
+            paddingBottom: '8px',
+            cursor: 'pointer',
+            userSelect: 'none',
+          }}
+        >
           <div style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '4px',
-            background: 'rgba(200,169,110,0.2)'
-          }} />
-          <div style={{
-            width: '24px',
-            height: '8px',
-            borderRadius: '4px',
-            background: 'rgba(200,169,110,0.5)'
-          }} />
-          <div style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '4px',
-            background: 'rgba(200,169,110,0.2)'
-          }} />
+            fontSize: '9px',
+            letterSpacing: '0.4em',
+            color: hovered ? 'rgba(200,169,110,0.55)' : 'rgba(200,169,110,0.2)',
+            transition: 'color 0.3s ease',
+            whiteSpace: 'nowrap',
+          }}>
+            ← GO BACK
+          </div>
         </div>
       </div>
 

@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
 
+function toUtcDate(dateStr) {
+  // Graph returns UTC datetimes without 'Z' — append it so JS parses as UTC not local
+  if (!dateStr) return new Date(NaN);
+  return new Date(dateStr.endsWith('Z') ? dateStr : dateStr + 'Z');
+}
+
 function formatDate(dateStr) {
   if (!dateStr) return '';
-  const date = new Date(dateStr);
+  const date = toUtcDate(dateStr);
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -20,7 +26,7 @@ function formatDate(dateStr) {
 
 function formatTime(dateStr) {
   if (!dateStr || !dateStr.includes('T')) return 'ALL DAY';
-  const date = new Date(dateStr);
+  const date = toUtcDate(dateStr);
   return date.toLocaleTimeString('en-GB', {
     hour: '2-digit', minute: '2-digit', hour12: true
   }).toUpperCase();
@@ -108,9 +114,6 @@ export default function CalendarApp() {
         )}
       </div>
 
-      <div style={{ textAlign: 'center', fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(200,169,110,0.2)', marginTop: '48px' }}>
-        SAY "COMPUTER, GO BACK" TO RETURN
-      </div>
     </div>
   );
 }

@@ -87,9 +87,6 @@ export default function NewsApp() {
         ))}
       </div>
 
-      <div style={{ textAlign: 'center', fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(200,169,110,0.2)', marginTop: '48px' }}>
-        SAY "COMPUTER, GO BACK" TO RETURN
-      </div>
     </div>
   );
 }

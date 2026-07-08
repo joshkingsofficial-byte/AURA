@@ -8,26 +8,43 @@ const WEATHER_CODES = {
   81: 'Heavy showers', 82: 'Violent showers', 95: 'Thunderstorm',
 };
 
-const COLCHESTER = { lat: 51.8959, lon: 0.8919, name: 'Colchester' };
+async function resolveLocation() {
+  // 1. Try IP-based city detection
+  try {
+    const geo = await fetch('https://ipapi.co/json/').then(r => r.json());
+    if (geo.latitude && geo.longitude) {
+      return { lat: geo.latitude, lon: geo.longitude, name: geo.city || geo.region || 'Your Location' };
+    }
+  } catch {}
+
+  // 2. Fallback: browser geolocation
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve({ lat: 51.5074, lon: -0.1278, name: 'London' });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude, name: 'Your Location' }),
+      () => resolve({ lat: 51.5074, lon: -0.1278, name: 'London' }),
+      { timeout: 5000 }
+    );
+  });
+}
 
 export default function WeatherApp() {
   const [weather, setWeather] = useState(null);
+  const [location, setLocation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${COLCHESTER.lat}&longitude=${COLCHESTER.lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max&timezone=Europe/London&forecast_days=5`;
-
-    fetch(url)
-      .then(r => r.json())
-      .then(data => {
-        setWeather(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError('Could not load weather');
-        setLoading(false);
-      });
+    resolveLocation().then(loc => {
+      setLocation(loc);
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max&timezone=auto&forecast_days=5`;
+      return fetch(url).then(r => r.json());
+    })
+    .then(data => { setWeather(data); setLoading(false); })
+    .catch(() => { setError('Could not load weather'); setLoading(false); });
   }, []);
 
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -63,7 +80,7 @@ export default function WeatherApp() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div style={{ fontSize: '10px', letterSpacing: '0.4em', color: '#c8a96e', marginBottom: '8px' }}>WEATHER</div>
-          <div style={{ fontSize: '13px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.4)' }}>{COLCHESTER.name}</div>
+          <div style={{ fontSize: '13px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.4)' }}>{location?.name?.toUpperCase()}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: 'rgba(200,169,110,0.5)' }}>FEELS LIKE {Math.round(c.apparent_temperature)}°C</div>
@@ -117,10 +134,6 @@ export default function WeatherApp() {
             );
           })}
         </div>
-      </div>
-
-      <div style={{ textAlign: 'center', fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(200,169,110,0.2)', marginTop: 'auto' }}>
-        SAY "COMPUTER, GO BACK" TO RETURN
       </div>
     </div>
   );

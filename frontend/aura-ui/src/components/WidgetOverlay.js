@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const GOLD = '#c8a96e';
 const GOLD_DIM = 'rgba(200,169,110,0.35)';
@@ -88,7 +88,31 @@ function WeatherGlyph({ code }) {
   );
 }
 
-function ListeningOrb({ isListening }) {
+function ListeningOrb({ isListening, micVolumeRef }) {
+  const [volume, setVolume] = useState(0);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    if (!isListening) {
+      cancelAnimationFrame(rafRef.current);
+      setVolume(0);
+      return;
+    }
+    // Read volume from the shared capture pipeline — no second getUserMedia needed
+    const tick = () => {
+      setVolume(micVolumeRef?.current ?? 0);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [isListening, micVolumeRef]);
+
+  // Inner ring scales with volume when listening (75px base, up to 110px at peak)
+  const innerSize = isListening ? 75 + volume * 35 : 75;
+  const innerGlow = isListening
+    ? `0 0 ${20 + volume * 40}px rgba(200,169,110,${0.3 + volume * 0.4}), 0 0 60px rgba(200,169,110,0.1)`
+    : '0 0 12px rgba(200,169,110,0.15)';
+
   return (
     <div
       style={{
@@ -130,24 +154,23 @@ function ListeningOrb({ isListening }) {
           transformOrigin: 'center center',
         }}
       />
-      {/* Inner ring */}
+      {/* Inner ring — volume-reactive when listening */}
       <div
         style={{
           position: 'absolute',
-          width: '150px',
-          height: '150px',
-          marginLeft: '-75px',
-          marginTop: '-75px',
+          width: `${innerSize * 2}px`,
+          height: `${innerSize * 2}px`,
+          marginLeft: `-${innerSize}px`,
+          marginTop: `-${innerSize}px`,
           borderRadius: '50%',
           border: `1.5px solid ${isListening ? GOLD : GOLD_DIM}`,
-          boxShadow: isListening
-            ? `0 0 30px rgba(200,169,110,0.4), 0 0 60px rgba(200,169,110,0.15), inset 0 0 20px rgba(200,169,110,0.08)`
-            : `0 0 12px rgba(200,169,110,0.15)`,
-          animation: 'orb-ring-1 2s ease-in-out infinite',
+          boxShadow: innerGlow,
+          animation: isListening ? 'none' : 'orb-ring-1 2s ease-in-out infinite',
+          transition: 'width 0.08s ease, height 0.08s ease, margin 0.08s ease, box-shadow 0.08s ease',
           transformOrigin: 'center center',
         }}
       />
-      {/* Expanding fade ring (for listening only) */}
+      {/* Expanding fade ring (listening only) */}
       {isListening && (
         <div
           style={{
@@ -182,7 +205,7 @@ function ListeningOrb({ isListening }) {
   );
 }
 
-export default function WidgetOverlay({ isListening, isThinking, spotifyData, screen }) {
+export default function WidgetOverlay({ isListening, isThinking, spotifyData, screen, micVolumeRef }) {
   const [now, setNow] = useState(new Date());
   const [weather, setWeather] = useState(null);
 
@@ -375,7 +398,7 @@ export default function WidgetOverlay({ isListening, isThinking, spotifyData, sc
       )}
 
       {/* ── Center: Listening / Thinking orb ── */}
-      {isActive && <ListeningOrb isListening={isListening} />}
+      {isActive && <ListeningOrb isListening={isListening} micVolumeRef={micVolumeRef} />}
 
       {/* ── Bottom-center: Voice prompt + nav dots ── */}
       {showPrompt && (
