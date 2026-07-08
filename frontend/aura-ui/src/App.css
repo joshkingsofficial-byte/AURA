@@ -152,7 +152,27 @@
   animation: gesture-select-pulse 1.8s ease-in-out infinite;
 }
 
-/* === LISTENING ORB === */
+/* === AURA ORB — ALL STATES === */
+
+/* Resting heartbeat — 4.5s slow breath */
+@keyframes orb-resting {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%       { opacity: 1;    transform: scale(1.04); }
+}
+
+/* Aware — quickened, slightly brighter (~400ms state, 1.6s anim) */
+@keyframes orb-aware {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50%       { opacity: 1;    transform: scale(1.08); }
+}
+
+/* Speaking — outward ripple, breath becoming words */
+@keyframes orb-speaking {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  30%       { opacity: 0.9;  transform: scale(1.07); }
+  70%       { opacity: 0.45; transform: scale(0.97); }
+}
+
 @keyframes orb-ring-1 {
   0%, 100% { opacity: 0.8; transform: scale(1); }
   50%       { opacity: 0.4; transform: scale(1.06); }

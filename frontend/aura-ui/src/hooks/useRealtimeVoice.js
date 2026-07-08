@@ -261,6 +261,7 @@ function int16ToFloat32(pcm16) {
 export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, setIsThinking, setReply }) {
   const [sessionStatus, setSessionStatus] = useState('idle');
   const sessionStatusRef = useRef('idle');
+  const [orbState, setOrbState] = useState('resting');
   const realtimeWsRef = useRef(null);
   const streamRef = useRef(null);
   const captureCtxRef = useRef(null);
@@ -272,6 +273,8 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
   const micVolumeRef = useRef(0);   // 0–1, updated each rAF frame from capture analyser
   const micAnalyserRef = useRef(null);
   const micRafRef = useRef(null);
+  const orbReturningTimerRef = useRef(null);
+  const isSpeakingRef = useRef(false);
 
   const cb = useRef({});
   cb.current = { onNavigate, onWake, setIsListening, setIsThinking, setReply, wsRef };
@@ -281,7 +284,25 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
     sessionStatusRef.current = s;
   }, []);
 
+  const setOrb = useCallback((state) => {
+    if (orbReturningTimerRef.current) {
+      clearTimeout(orbReturningTimerRef.current);
+      orbReturningTimerRef.current = null;
+    }
+    if (state === 'returning') {
+      setOrbState('returning');
+      orbReturningTimerRef.current = setTimeout(() => {
+        setOrbState('resting');
+        orbReturningTimerRef.current = null;
+      }, 1500);
+    } else {
+      setOrbState(state);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const releaseResources = useCallback(() => {
+    if (orbReturningTimerRef.current) { clearTimeout(orbReturningTimerRef.current); orbReturningTimerRef.current = null; }
+    isSpeakingRef.current = false;
     if (micRafRef.current) { cancelAnimationFrame(micRafRef.current); micRafRef.current = null; }
     micAnalyserRef.current = null;
     micVolumeRef.current = 0;
@@ -300,10 +321,11 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
 
   const endSession = useCallback(() => {
     releaseResources();
+    setOrb('returning');
     updateStatus('idle');
     cb.current.setIsListening?.(false);
     cb.current.setIsThinking?.(false);
-  }, [releaseResources, updateStatus]);
+  }, [releaseResources, updateStatus, setOrb]);
 
   const sendRt = useCallback((obj) => {
     const ws = realtimeWsRef.current;
@@ -517,6 +539,7 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
 
     switch (msg.type) {
       case 'session.created':
+        setOrb('listening');
         updateStatus('active');
         cb.current.setReply?.('');
         cb.current.setIsListening?.(true);
@@ -530,6 +553,8 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
 
       case 'input_audio_buffer.speech_started':
         console.log('[Realtime] Speech detected');
+        setOrb('listening');
+        isSpeakingRef.current = false;
         cb.current.setIsListening?.(true);
         cb.current.setIsThinking?.(false);
         nextPlayTimeRef.current = playbackCtxRef.current?.currentTime ?? 0;
@@ -537,12 +562,14 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
 
       case 'input_audio_buffer.speech_stopped':
         console.log('[Realtime] Speech ended — waiting for response...');
+        setOrb('thinking');
         cb.current.setIsListening?.(false);
         cb.current.setIsThinking?.(true);
         break;
 
       case 'response.audio.delta':        // legacy name
       case 'response.output_audio.delta': // new model name
+        if (!isSpeakingRef.current) { isSpeakingRef.current = true; setOrb('speaking'); }
         playAudioDelta(msg.delta);
         break;
 
@@ -575,6 +602,8 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
       }
 
       case 'response.done':
+        isSpeakingRef.current = false;
+        setOrb('returning');
         cb.current.setIsThinking?.(false);
         break;
 
@@ -762,7 +791,8 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
         if (!event.results[i].isFinal) continue;
         const text = event.results[i][0].transcript.trim().toLowerCase();
         if (HOTWORDS.some(hw => text.includes(hw)) && sessionStatusRef.current === 'idle') {
-          startSession();
+          setOrb('aware');
+          setTimeout(() => { if (sessionStatusRef.current === 'idle') startSession(); }, 400);
         }
       }
     };
@@ -780,5 +810,5 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
 
   useEffect(() => () => { releaseResources(); }, [releaseResources]);
 
-  return { sessionStatus, startSession, endSession, micVolumeRef };
+  return { sessionStatus, startSession, endSession, micVolumeRef, orbState };
 }

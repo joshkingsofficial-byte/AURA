@@ -88,124 +88,109 @@ function WeatherGlyph({ code }) {
   );
 }
 
-function ListeningOrb({ isListening, micVolumeRef }) {
+function AuraOrb({ orbState, micVolumeRef }) {
   const [volume, setVolume] = useState(0);
   const rafRef = useRef(null);
+  const isListening = orbState === 'listening';
 
   useEffect(() => {
-    if (!isListening) {
-      cancelAnimationFrame(rafRef.current);
-      setVolume(0);
-      return;
-    }
-    // Read volume from the shared capture pipeline — no second getUserMedia needed
-    const tick = () => {
-      setVolume(micVolumeRef?.current ?? 0);
-      rafRef.current = requestAnimationFrame(tick);
-    };
+    if (!isListening) { cancelAnimationFrame(rafRef.current); setVolume(0); return; }
+    const tick = () => { setVolume(micVolumeRef?.current ?? 0); rafRef.current = requestAnimationFrame(tick); };
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
   }, [isListening, micVolumeRef]);
 
-  // Inner ring scales with volume when listening (75px base, up to 110px at peak)
+  const isResting  = orbState === 'resting' || orbState === 'returning';
+  const isAware    = orbState === 'aware';
+  const isActive   = !isResting && !isAware;
+
+  // Inner ring: volume-reactive when listening, fixed size otherwise
   const innerSize = isListening ? 75 + volume * 35 : 75;
   const innerGlow = isListening
     ? `0 0 ${20 + volume * 40}px rgba(200,169,110,${0.3 + volume * 0.4}), 0 0 60px rgba(200,169,110,0.1)`
-    : '0 0 12px rgba(200,169,110,0.15)';
+    : orbState === 'speaking'
+      ? '0 0 28px rgba(200,169,110,0.35), 0 0 60px rgba(200,169,110,0.12)'
+      : '0 0 12px rgba(200,169,110,0.15)';
 
   return (
-    <div
-      style={{
+    <div style={{ position: 'absolute', top: '50%', left: '50%', width: 0, height: 0, pointerEvents: 'none' }}>
+
+      {/* ── Resting / Aware ring — always present, changes rhythm ── */}
+      <div style={{
         position: 'absolute',
-        top: '50%',
-        left: '50%',
-        width: 0,
-        height: 0,
-        pointerEvents: 'none',
-      }}
-    >
-      {/* Outermost expanding ring */}
-      <div
-        style={{
+        width: '130px',
+        height: '130px',
+        marginLeft: '-65px',
+        marginTop: '-65px',
+        borderRadius: '50%',
+        border: `1px solid rgba(200,169,110,${isResting ? 0.22 : isAware ? 0.4 : 0.07})`,
+        animation: isResting
+          ? `orb-resting ${orbState === 'returning' ? '3s' : '4.5s'} ease-in-out infinite`
+          : isAware
+            ? 'orb-aware 1.6s ease-in-out infinite'
+            : 'none',
+        transition: 'border-color 0.8s ease, opacity 0.8s ease',
+        transformOrigin: 'center center',
+      }} />
+
+      {/* ── Active rings — listening / thinking / speaking ── */}
+      {isActive && (<>
+        {/* Outermost */}
+        <div style={{
           position: 'absolute',
-          width: '300px',
-          height: '300px',
-          marginLeft: '-150px',
-          marginTop: '-150px',
+          width: '300px', height: '300px',
+          marginLeft: '-150px', marginTop: '-150px',
           borderRadius: '50%',
           border: `1px solid ${GOLD_FAINT}`,
           animation: 'orb-ring-3 3s ease-in-out infinite',
           animationDelay: '0.6s',
           transformOrigin: 'center center',
-        }}
-      />
-      {/* Mid ring */}
-      <div
-        style={{
+        }} />
+        {/* Mid */}
+        <div style={{
           position: 'absolute',
-          width: '220px',
-          height: '220px',
-          marginLeft: '-110px',
-          marginTop: '-110px',
+          width: '220px', height: '220px',
+          marginLeft: '-110px', marginTop: '-110px',
           borderRadius: '50%',
           border: `1px solid ${GOLD_DIM}`,
-          animation: 'orb-ring-2 2.5s ease-in-out infinite',
+          animation: orbState === 'speaking'
+            ? 'orb-speaking 1.8s ease-in-out infinite'
+            : 'orb-ring-2 2.5s ease-in-out infinite',
           animationDelay: '0.3s',
           transformOrigin: 'center center',
-        }}
-      />
-      {/* Inner ring — volume-reactive when listening */}
-      <div
-        style={{
+        }} />
+        {/* Inner — volume reactive */}
+        <div style={{
           position: 'absolute',
-          width: `${innerSize * 2}px`,
-          height: `${innerSize * 2}px`,
-          marginLeft: `-${innerSize}px`,
-          marginTop: `-${innerSize}px`,
+          width: `${innerSize * 2}px`, height: `${innerSize * 2}px`,
+          marginLeft: `-${innerSize}px`, marginTop: `-${innerSize}px`,
           borderRadius: '50%',
           border: `1.5px solid ${isListening ? GOLD : GOLD_DIM}`,
           boxShadow: innerGlow,
-          animation: isListening ? 'none' : 'orb-ring-1 2s ease-in-out infinite',
+          animation: isListening ? 'none'
+            : orbState === 'thinking' ? 'orb-ring-1 1.2s ease-in-out infinite'
+            : 'orb-ring-1 2s ease-in-out infinite',
           transition: 'width 0.08s ease, height 0.08s ease, margin 0.08s ease, box-shadow 0.08s ease',
           transformOrigin: 'center center',
-        }}
-      />
-      {/* Expanding fade ring (listening only) */}
-      {isListening && (
-        <div
-          style={{
+        }} />
+        {/* Expand-fade pulse (listening only) */}
+        {isListening && (
+          <div style={{
             position: 'absolute',
-            width: '150px',
-            height: '150px',
-            marginLeft: '-75px',
-            marginTop: '-75px',
+            width: '150px', height: '150px',
+            marginLeft: '-75px', marginTop: '-75px',
             borderRadius: '50%',
             border: `1px solid ${GOLD_DIM}`,
             animation: 'orb-expand-fade 2s ease-out infinite',
             transformOrigin: 'center center',
-          }}
-        />
-      )}
-      {/* Center label */}
-      <div
-        style={{
-          position: 'absolute',
-          transform: 'translate(-50%, -50%)',
-          fontSize: '9px',
-          letterSpacing: '0.45em',
-          color: GOLD_DIM,
-          fontWeight: 300,
-          whiteSpace: 'nowrap',
-          userSelect: 'none',
-        }}
-      >
-        {isListening ? 'LISTENING' : 'THINKING'}
-      </div>
+          }} />
+        )}
+      </>)}
     </div>
   );
 }
 
-export default function WidgetOverlay({ isListening, isThinking, spotifyData, screen, micVolumeRef }) {
+export default function WidgetOverlay({ isListening, isThinking, spotifyData, screen, micVolumeRef, orbState = 'resting' }) {
   const [now, setNow] = useState(new Date());
   const [weather, setWeather] = useState(null);
 
@@ -248,7 +233,8 @@ export default function WidgetOverlay({ isListening, isThinking, spotifyData, sc
 
   const isActive = isListening || isThinking;
   const nowPlaying = spotifyData && (spotifyData.playing || spotifyData.is_playing);
-  const showPrompt = screen === 'idle' && !isActive;
+  const activeOrbStates = ['listening', 'thinking', 'speaking'];
+  const showOrb = screen === 'idle' || activeOrbStates.includes(orbState);
 
   return (
     <div
@@ -403,40 +389,8 @@ export default function WidgetOverlay({ isListening, isThinking, spotifyData, sc
         </div>
       )}
 
-      {/* ── Center: Listening / Thinking orb ── */}
-      {isActive && <ListeningOrb isListening={isListening} micVolumeRef={micVolumeRef} />}
-
-      {/* ── Bottom-center: Voice prompt + nav dots ── */}
-      {showPrompt && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '36px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '16px',
-          }}
-        >
-          <div
-            style={{
-              fontSize: '10px',
-              letterSpacing: '0.4em',
-              color: 'rgba(200,169,110,0.25)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            SAY COMPUTER TO ACTIVATE
-          </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <div style={{ width: '24px', height: '6px', borderRadius: '3px', background: 'rgba(200,169,110,0.45)' }} />
-            <div style={{ width: '6px',  height: '6px', borderRadius: '3px', background: 'rgba(200,169,110,0.18)' }} />
-            <div style={{ width: '6px',  height: '6px', borderRadius: '3px', background: 'rgba(200,169,110,0.18)' }} />
-          </div>
-        </div>
-      )}
+      {/* ── Center: AURA orb — always present on idle, active states on all screens ── */}
+      {showOrb && <AuraOrb orbState={orbState} micVolumeRef={micVolumeRef} />}
     </div>
   );
 }

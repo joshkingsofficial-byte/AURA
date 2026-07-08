@@ -347,7 +347,7 @@ export default function App() {
   });
 
   // Realtime API voice pipeline — replaces OpenWakeWord + Whisper + GPT + TTS
-  const { startSession, endSession, sessionStatus, micVolumeRef } = useRealtimeVoice({
+  const { startSession, endSession, sessionStatus, micVolumeRef, orbState } = useRealtimeVoice({
     wsRef,
     onNavigate,
     onWake,
@@ -415,6 +415,7 @@ export default function App() {
         spotifyData={spotifyData}
         screen={screen}
         micVolumeRef={micVolumeRef}
+        orbState={orbState}
       />
       {/* VisionOverlay handles voice-triggered vision — suppressed when Vision app is open to avoid camera conflict */}
       {!(screen === 'app' && currentApp === 'vision') && <VisionOverlay />}
