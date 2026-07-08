@@ -16,6 +16,25 @@ load_dotenv()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 
+_ANNOUNCED_IDS_FILE = os.path.join(BASE_DIR, "data", "announced_events.json")
+
+
+def _load_announced_ids() -> set:
+    try:
+        with open(_ANNOUNCED_IDS_FILE) as f:
+            return set(json.load(f))
+    except Exception:
+        return set()
+
+
+def _save_announced_ids(ids: set):
+    try:
+        os.makedirs(os.path.dirname(_ANNOUNCED_IDS_FILE), exist_ok=True)
+        with open(_ANNOUNCED_IDS_FILE, "w") as f:
+            json.dump(list(ids), f)
+    except Exception as e:
+        print(f"[Awareness] Could not persist announced IDs: {e}")
+
 from server.ws_server import WebSocketServer
 from server.http_server import start_http_server, stop_http_server
 from services.music_spotify import SpotifyMusicClient
@@ -430,9 +449,10 @@ async def _check_calendar():
 
             # 10–17 min window ensures a 2-min poll always catches it exactly once
             if 10 <= minutes_until <= 17:
-                title = event.get("title", "a meeting")
+                title = event.get("title") or "a meeting"
                 mins = round(minutes_until)
                 _announced_event_ids.add(eid)
+                _save_announced_ids(_announced_event_ids)
 
                 text = f"Your {title} begins in {_num_words(mins)} minutes."
                 print(f"[Awareness] {text}")
@@ -468,7 +488,8 @@ async def initialize():
 
     print("[✓] Tapo light service ready")
 
-    global apple_music_poll_task, reminder_task
+    global apple_music_poll_task, reminder_task, _announced_event_ids
+    _announced_event_ids = _load_announced_ids()
     apple_music_poll_task = asyncio.create_task(apple_music_poll_loop())
     print("[✓] Apple Music poller started")
 
@@ -506,7 +527,6 @@ async def shutdown():
 
     if ws_server:
         await ws_server.stop()
-        print("[WS] Server stopped")
 
     print("[✓] AURA shutdown complete")
 

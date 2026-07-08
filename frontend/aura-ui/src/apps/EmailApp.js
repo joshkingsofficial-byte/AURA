@@ -6,16 +6,21 @@ export default function EmailApp() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('http://localhost:8766/emails')
-      .then(r => r.json())
-      .then(data => {
-        setEmails(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError('Could not connect to AURA backend');
-        setLoading(false);
-      });
+    const fetchEmails = () => {
+      fetch('http://localhost:8766/emails')
+        .then(r => r.json())
+        .then(data => {
+          setEmails(data);
+          setLoading(false);
+        })
+        .catch(() => {
+          setError('Could not connect to AURA backend');
+          setLoading(false);
+        });
+    };
+    fetchEmails();
+    const id = setInterval(fetchEmails, 60 * 1000);
+    return () => clearInterval(id);
   }, []);
 
   if (loading) return (

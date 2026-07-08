@@ -654,7 +654,6 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
       rtWs.send(JSON.stringify({
         type: 'session.update',
         session: {
-          type: 'realtime',
           instructions,
           tools: TOOLS,
           tool_choice: 'auto',

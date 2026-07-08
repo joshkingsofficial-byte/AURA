@@ -216,24 +216,30 @@ export default function WidgetOverlay({ isListening, isThinking, spotifyData, sc
 
   useEffect(() => {
     if (!navigator.geolocation) return;
+    let intervalId;
     navigator.geolocation.getCurrentPosition(
       ({ coords: { latitude, longitude } }) => {
-        fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`
-        )
-          .then((r) => r.json())
-          .then(({ current_weather: cw }) =>
-            setWeather({
-              temp: Math.round(cw.temperature),
-              desc: wmoDesc(cw.weathercode),
-              code: cw.weathercode,
-              wind: Math.round(cw.windspeed),
-            })
+        const fetchWeather = () => {
+          fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`
           )
-          .catch(() => {});
+            .then((r) => r.json())
+            .then(({ current_weather: cw }) =>
+              setWeather({
+                temp: Math.round(cw.temperature),
+                desc: wmoDesc(cw.weathercode),
+                code: cw.weathercode,
+                wind: Math.round(cw.windspeed),
+              })
+            )
+            .catch(() => {});
+        };
+        fetchWeather();
+        intervalId = setInterval(fetchWeather, 30 * 60 * 1000);
       },
       () => {}
     );
+    return () => clearInterval(intervalId);
   }, []);
 
   const time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
