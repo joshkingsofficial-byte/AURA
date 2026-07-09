@@ -354,6 +354,8 @@ export default function App() {
     setIsListening,
     setIsThinking,
     setReply,
+    screenRef,
+    currentAppRef,
   });
   sessionStatusRef.current = sessionStatus;
 

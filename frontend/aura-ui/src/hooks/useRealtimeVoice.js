@@ -274,7 +274,18 @@ function int16ToFloat32(pcm16) {
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
-export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, setIsThinking, setReply }) {
+// Fire-and-forget test log write — must never affect AURA's behavior or block the caller.
+function logTestInteraction(entry) {
+  try {
+    fetch('http://localhost:8766/test/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry),
+    }).catch(() => {});
+  } catch (e) {}
+}
+
+export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, setIsThinking, setReply, screenRef, currentAppRef }) {
   const [sessionStatus, setSessionStatus] = useState('idle');
   const sessionStatusRef = useRef('idle');
   const [orbState, setOrbState] = useState('resting');
@@ -291,6 +302,7 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
   const micRafRef = useRef(null);
   const orbReturningTimerRef = useRef(null);
   const isSpeakingRef = useRef(false);
+  const lastUserTranscriptRef = useRef('');
 
   const cb = useRef({});
   cb.current = { onNavigate, onWake, setIsListening, setIsThinking, setReply, wsRef };
@@ -519,7 +531,18 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
       item: { type: 'function_call_output', call_id: callId, output: JSON.stringify({ result: output }) },
     });
     sendRt({ type: 'response.create' });
-  }, [sendRt]);
+
+    logTestInteraction({
+      event_type: 'tool_call',
+      screen: screenRef?.current,
+      app: currentAppRef?.current,
+      user_transcript: lastUserTranscriptRef.current,
+      tool_name: name,
+      tool_args: args,
+      tool_result: output,
+      error: typeof output === 'string' && output.startsWith('error:') ? output : null,
+    });
+  }, [sendRt, screenRef, currentAppRef]);
 
   // Play a base64-encoded PCM16 audio chunk from OpenAI
   const playAudioDelta = useCallback((b64) => {
@@ -571,9 +594,14 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
         console.log('[Realtime] Speech detected');
         setOrb('listening');
         isSpeakingRef.current = false;
+        lastUserTranscriptRef.current = '';
         cb.current.setIsListening?.(true);
         cb.current.setIsThinking?.(false);
         nextPlayTimeRef.current = playbackCtxRef.current?.currentTime ?? 0;
+        break;
+
+      case 'conversation.item.input_audio_transcription.completed':
+        if (msg.transcript) lastUserTranscriptRef.current = msg.transcript;
         break;
 
       case 'input_audio_buffer.speech_stopped':
@@ -592,6 +620,14 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
       case 'response.audio_transcript.done':         // legacy name
       case 'response.output_audio_transcript.done':  // new model name
         if (msg.transcript) cb.current.setReply?.(msg.transcript);
+        logTestInteraction({
+          event_type: 'response',
+          screen: screenRef?.current,
+          app: currentAppRef?.current,
+          user_transcript: lastUserTranscriptRef.current,
+          aura_response: msg.transcript || '',
+          error: null,
+        });
         break;
 
       case 'response.output_item.added':
@@ -626,6 +662,13 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
       case 'error':
         console.error('[Realtime] API error:', msg.error);
         cb.current.setReply?.('Error: ' + (msg.error?.message || JSON.stringify(msg.error)));
+        logTestInteraction({
+          event_type: 'error',
+          screen: screenRef?.current,
+          app: currentAppRef?.current,
+          user_transcript: lastUserTranscriptRef.current,
+          error: msg.error?.message || JSON.stringify(msg.error),
+        });
         break;
 
       default:

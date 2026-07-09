@@ -148,6 +148,7 @@ async def handle_vision_query(msg: dict):
     print(f"[Vision] Query: '{query}' | image={'yes' if image_b64 else 'no'}")
     await ws_server.broadcast({"type": "vision_analyzing"})
 
+    error = None
     try:
         from vision.vision_engine import analyze_b64, analyze
 
@@ -163,10 +164,40 @@ async def handle_vision_query(msg: dict):
         print(f"[Vision] Result: {result[:80]}...")
     except Exception as e:
         print(f"[Vision] Error: {e}")
+        error = str(e)
         result = f"Vision analysis error: {e}"
+
+    _log_vision_test_entry(query, image_b64, result, error)
 
     await ws_server.broadcast({"type": "vision_result", "text": result, "query": query})
     await ws_server.broadcast({"type": "done"})
+
+
+def _log_vision_test_entry(query, image_b64, result, error):
+    """Test recorder hook — logs the query/result, never the image unless opted in."""
+    try:
+        from services.test_recorder import log_interaction
+
+        entry = {
+            "event_type": "vision",
+            "screen": "app",
+            "app": "vision",
+            "user_transcript": query,
+            "aura_response": result,
+            "image_captured": bool(image_b64),
+            "error": error,
+        }
+        if image_b64 and os.getenv("AURA_SAVE_TEST_IMAGES") == "1":
+            image_dir = os.path.join(BASE_DIR, "data", "test_logs", "images")
+            os.makedirs(image_dir, exist_ok=True)
+            image_path = os.path.join(image_dir, f"{datetime.now(timezone.utc).timestamp()}.jpg")
+            with open(image_path, "wb") as f:
+                import base64
+                f.write(base64.b64decode(image_b64))
+            entry["image_path"] = image_path
+        log_interaction(entry)
+    except Exception as e:
+        print(f"[TestRecorder] Vision log error: {e}")
 
 
 async def handle_apple_music_control(msg: dict):

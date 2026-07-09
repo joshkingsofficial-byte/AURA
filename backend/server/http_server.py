@@ -9,6 +9,7 @@ from services.outlook_service import (
     send_email, search_contacts,
 )
 from services.user_profile import get_context_summary, add_fact
+from services.test_recorder import log_interaction, get_latest_log
 
 REALTIME_MODEL = 'gpt-realtime-mini'
 
@@ -168,6 +169,24 @@ async def handle_profile_remember(request):
         return web.Response(status=500, text=str(e))
 
 
+async def handle_test_log(request):
+    """Append one interaction entry to today's test log. Best-effort — never fails loudly."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    log_interaction(body)
+    return web.Response(text=json.dumps({"ok": True}), content_type='application/json')
+
+
+async def handle_test_logs_latest(request):
+    filename, entries = get_latest_log()
+    return web.Response(
+        text=json.dumps({"file": filename, "entries": entries}),
+        content_type='application/json'
+    )
+
+
 async def handle_realtime_ws(request):
     """WebSocket endpoint — proxies between the browser and OpenAI Realtime API."""
     ws = web.WebSocketResponse()
@@ -311,6 +330,8 @@ async def start_http_server():
     app.router.add_get('/profile', handle_profile_get)
     app.router.add_post('/profile/remember', handle_profile_remember)
     app.router.add_get('/realtime-ws', handle_realtime_ws)
+    app.router.add_post('/test/log', handle_test_log)
+    app.router.add_get('/test/logs/latest', handle_test_logs_latest)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', 8766)
