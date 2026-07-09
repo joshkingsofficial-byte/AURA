@@ -38,13 +38,22 @@ export default function WeatherApp() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    let intervalId;
+
+    const fetchWeather = (loc) => {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max&timezone=auto&forecast_days=5`;
+      fetch(url).then(r => r.json())
+        .then(data => { setWeather(data); setLoading(false); })
+        .catch(() => { setError('Could not load weather'); setLoading(false); });
+    };
+
     resolveLocation().then(loc => {
       setLocation(loc);
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max&timezone=auto&forecast_days=5`;
-      return fetch(url).then(r => r.json());
-    })
-    .then(data => { setWeather(data); setLoading(false); })
-    .catch(() => { setError('Could not load weather'); setLoading(false); });
+      fetchWeather(loc);
+      intervalId = setInterval(() => fetchWeather(loc), 30 * 60 * 1000);
+    });
+
+    return () => clearInterval(intervalId);
   }, []);
 
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
