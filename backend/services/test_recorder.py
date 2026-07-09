@@ -44,6 +44,55 @@ def log_interaction(entry: dict):
         print(f"[TestRecorder] Could not write log: {e}")
 
 
+def _today_entries():
+    path = _today_log_path()
+    if not os.path.isfile(path):
+        return []
+    entries = []
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entries.append(json.loads(line))
+            except Exception:
+                continue
+    return entries
+
+
+_MUSIC_TOOLS = {"music_control", "music_search"}
+_CALENDAR_TOOLS = {"calendar_read", "calendar_create", "calendar_delete"}
+
+
+def log_session_summary(session_id: str, started_at_ms=None):
+    """Tally this session's entries from today's log and append a session_summary."""
+    if not session_id:
+        return
+    try:
+        entries = [e for e in _today_entries() if e.get("session_id") == session_id]
+        interactions = [e for e in entries if e.get("event_type") in ("tool_call", "response", "vision")]
+
+        duration_seconds = None
+        if started_at_ms:
+            duration_seconds = round(datetime.now(timezone.utc).timestamp() - (started_at_ms / 1000), 1)
+
+        log_interaction({
+            "event_type": "session_summary",
+            "session_id": session_id,
+            "session_summary": {
+                "duration_seconds": duration_seconds,
+                "interactions": len(interactions),
+                "errors": sum(1 for e in entries if e.get("error")),
+                "vision_requests": sum(1 for e in entries if e.get("event_type") == "vision"),
+                "music_requests": sum(1 for e in entries if e.get("tool_name") in _MUSIC_TOOLS),
+                "calendar_requests": sum(1 for e in entries if e.get("tool_name") in _CALENDAR_TOOLS),
+            },
+        })
+    except Exception as e:
+        print(f"[TestRecorder] Could not log session summary: {e}")
+
+
 def get_latest_log():
     """Return (filename, entries) for the most recent log file, or (None, [])."""
     try:

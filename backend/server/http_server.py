@@ -9,7 +9,7 @@ from services.outlook_service import (
     send_email, search_contacts,
 )
 from services.user_profile import get_context_summary, add_fact
-from services.test_recorder import log_interaction, get_latest_log
+from services.test_recorder import log_interaction, get_latest_log, log_session_summary
 
 REALTIME_MODEL = 'gpt-realtime-mini'
 
@@ -179,6 +179,16 @@ async def handle_test_log(request):
     return web.Response(text=json.dumps({"ok": True}), content_type='application/json')
 
 
+async def handle_test_session_end(request):
+    """Tally and log a session_summary entry for a finished test session. Best-effort."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    log_session_summary(body.get("session_id"), body.get("started_at"))
+    return web.Response(text=json.dumps({"ok": True}), content_type='application/json')
+
+
 async def handle_test_logs_latest(request):
     filename, entries = get_latest_log()
     return web.Response(
@@ -331,6 +341,7 @@ async def start_http_server():
     app.router.add_post('/profile/remember', handle_profile_remember)
     app.router.add_get('/realtime-ws', handle_realtime_ws)
     app.router.add_post('/test/log', handle_test_log)
+    app.router.add_post('/test/session/end', handle_test_session_end)
     app.router.add_get('/test/logs/latest', handle_test_logs_latest)
     runner = web.AppRunner(app)
     await runner.setup()

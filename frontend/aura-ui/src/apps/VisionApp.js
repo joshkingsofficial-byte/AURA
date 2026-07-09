@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuraSocket } from '../hooks/useAuraSocket';
+import { getSessionId, nextInteractionId } from '../testSession';
 
 const WS_URL = 'ws://localhost:8765';
 const GOLD = '#c8a96e';
@@ -80,7 +81,7 @@ export default function VisionApp({ onBack }) {
     if (!question.trim() || isAnalyzing || !capturedImageRef.current) return;
     setMessages((prev) => [...prev, { role: 'user', text: question }]);
     setIsAnalyzing(true);
-    sendRef.current?.({ type: 'vision_query', query: question, image: capturedImageRef.current });
+    sendRef.current?.({ type: 'vision_query', query: question, image: capturedImageRef.current, session_id: getSessionId(), interaction_id: nextInteractionId() });
   }, [isAnalyzing]);
 
   const capture = useCallback((question = 'What is this?') => {
@@ -91,7 +92,7 @@ export default function VisionApp({ onBack }) {
     setPhase('analyzing');
     setMessages([{ role: 'user', text: question }]);
     setIsAnalyzing(true);
-    sendRef.current?.({ type: 'vision_query', query: question, image });
+    sendRef.current?.({ type: 'vision_query', query: question, image, session_id: getSessionId(), interaction_id: nextInteractionId() });
   }, [stopCamera]);
 
   const reset = useCallback(() => {

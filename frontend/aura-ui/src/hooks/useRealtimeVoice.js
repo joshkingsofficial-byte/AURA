@@ -274,13 +274,15 @@ function int16ToFloat32(pcm16) {
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
+import { startTestSession, endTestSession, getSessionId, nextInteractionId } from '../testSession';
+
 // Fire-and-forget test log write — must never affect AURA's behavior or block the caller.
 function logTestInteraction(entry) {
   try {
     fetch('http://localhost:8766/test/log', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entry),
+      body: JSON.stringify({ session_id: getSessionId(), interaction_id: nextInteractionId(), ...entry }),
     }).catch(() => {});
   } catch (e) {}
 }
@@ -353,6 +355,17 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
     updateStatus('idle');
     cb.current.setIsListening?.(false);
     cb.current.setIsThinking?.(false);
+
+    const { sessionId, startedAt } = endTestSession();
+    if (sessionId) {
+      try {
+        fetch('http://localhost:8766/test/session/end', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, started_at: startedAt }),
+        }).catch(() => {});
+      } catch (e) {}
+    }
   }, [releaseResources, updateStatus, setOrb]);
 
   const sendRt = useCallback((obj) => {
@@ -697,6 +710,9 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
 
   const startSession = useCallback(async () => {
     if (sessionStatusRef.current !== 'idle') return;
+
+    startTestSession();
+    logTestInteraction({ event_type: 'session_start', screen: screenRef?.current, app: currentAppRef?.current });
 
     playDing();
     cb.current.onWake?.();

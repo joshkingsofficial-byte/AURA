@@ -144,6 +144,8 @@ async def handle_vision_query(msg: dict):
 
     query    = msg.get("query", "What is this? Describe what you see in detail.")
     image_b64 = msg.get("image")
+    session_id = msg.get("session_id")
+    interaction_id = msg.get("interaction_id")
 
     print(f"[Vision] Query: '{query}' | image={'yes' if image_b64 else 'no'}")
     await ws_server.broadcast({"type": "vision_analyzing"})
@@ -167,19 +169,21 @@ async def handle_vision_query(msg: dict):
         error = str(e)
         result = f"Vision analysis error: {e}"
 
-    _log_vision_test_entry(query, image_b64, result, error)
+    _log_vision_test_entry(query, image_b64, result, error, session_id, interaction_id)
 
     await ws_server.broadcast({"type": "vision_result", "text": result, "query": query})
     await ws_server.broadcast({"type": "done"})
 
 
-def _log_vision_test_entry(query, image_b64, result, error):
+def _log_vision_test_entry(query, image_b64, result, error, session_id=None, interaction_id=None):
     """Test recorder hook — logs the query/result, never the image unless opted in."""
     try:
         from services.test_recorder import log_interaction
 
         entry = {
             "event_type": "vision",
+            "session_id": session_id,
+            "interaction_id": interaction_id,
             "screen": "app",
             "app": "vision",
             "user_transcript": query,
