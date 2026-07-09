@@ -142,8 +142,7 @@ function AuraOrb({ orbState, micVolumeRef }) {
           marginLeft: '-150px', marginTop: '-150px',
           borderRadius: '50%',
           border: `1px solid ${GOLD_FAINT}`,
-          animation: 'orb-ring-3 3s ease-in-out infinite',
-          animationDelay: '0.6s',
+          animation: 'orb-ring-3 3s ease-in-out 0.6s infinite',
           transformOrigin: 'center center',
         }} />
         {/* Mid */}
@@ -154,9 +153,8 @@ function AuraOrb({ orbState, micVolumeRef }) {
           borderRadius: '50%',
           border: `1px solid ${GOLD_DIM}`,
           animation: orbState === 'speaking'
-            ? 'orb-speaking 1.8s ease-in-out infinite'
-            : 'orb-ring-2 2.5s ease-in-out infinite',
-          animationDelay: '0.3s',
+            ? 'orb-speaking 1.8s ease-in-out 0.3s infinite'
+            : 'orb-ring-2 2.5s ease-in-out 0.3s infinite',
           transformOrigin: 'center center',
         }} />
         {/* Inner — volume reactive */}
