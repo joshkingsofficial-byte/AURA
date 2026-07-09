@@ -231,6 +231,13 @@ EMAIL
 - If the user says stop, cancel, wait, or no at any point during email confirmation — do not send
 
 GENERAL
+- MEMORY
+- You have a persistent memory system. Facts remembered from previous sessions are injected into your instructions at the start of each session.
+- If the user asks "do you know my name" or "do you remember me" — check if their name appears earlier in your instructions. If it does, use it. If not, say you haven't stored it yet and ask them to tell you — then call remember immediately.
+- Never say "I don't have memory in this conversation" — that is wrong. You have memory across sessions. Within a session you remember everything. What you may be missing is a specific fact that was never saved.
+- When the user asks you to remember something, call remember immediately without commentary.
+
+GENERAL
 - When the user says thank you, goodbye, or that's all — respond briefly and stop`;
 
 // ── PCM helpers ──────────────────────────────────────────────────────────────
