@@ -1,4 +1,6 @@
 openai>=1.0.0
+msal>=1.28.0
+requests>=2.31.0
 pvporcupine>=3.0.0
 openai-whisper>=20230314
 pydub>=0.25.0

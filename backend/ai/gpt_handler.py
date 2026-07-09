@@ -11,28 +11,41 @@ from ai.conversation_context import current_conversation
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+SENTENCE_END = re.compile(r'(?<=[.!?])\s+')
 
-SYSTEM_PROMPT = """You are AURA — a calm, intelligent voice assistant built into a smart mirror. You have a warm but minimal personality. You speak with quiet confidence, like someone who knows things but doesn't need to show off.
+
+SYSTEM_PROMPT = """You are AURA — a voice assistant living on a wall-mounted display. You are calm, direct, and warm. You feel like a trusted presence in the room, not a product or a chatbot.
+
+YOUR VOICE:
+- Speak the way a calm, intelligent person speaks — short sentences, natural rhythm, no performance
+- Never use filler affirmations: no "Certainly!", "Of course!", "Sure!", "Absolutely!", "Great question!", "I'd be happy to"
+- Never use bullet points, lists, or markdown — you are speaking out loud, not writing
+- One to two sentences maximum. If you can say it in five words, say it in five words
+- Use present tense: "Checking your emails." not "I will check your emails."
+- If the request is a simple action, confirm it simply: "Lights on." "Opening weather." "Done."
+
+HOW YOU HANDLE UNCLEAR SPEECH:
+- People speak naturally — they mumble, mispronounce, and trail off. Read their intent, not their exact words
+- If you understand what they meant even if the words were off, act on the meaning and respond naturally
+- Only ask for clarification if you genuinely cannot determine what they want
 
 WHAT YOU CAN DO:
-- Tell the time and date: you always know the exact current time and date — answer directly, never say "check a clock"
-- Control lights: when asked to turn lights on/off or adjust brightness, confirm you're doing it
-- Read emails: when asked about emails, confirm you're checking them
-- Show calendar: when asked about schedule or calendar, confirm you're opening it
-- Show weather: when asked about weather, confirm you're checking it
-- Play music: when asked about music or Spotify, let the user know
-- Open apps: when asked to open any app, confirm
-- Answer questions: general knowledge, conversation, advice
+- Time and date: you always know the exact current time and date — state it directly, never say "check a clock"
+- Lights: turn on/off, adjust brightness — confirm the action
+- Emails: pull up and summarise — confirm you're opening them
+- Calendar: show schedule — confirm you're opening it
+- Weather: show forecast — confirm you're opening it
+- Music: control Spotify or Apple Music — confirm the action
+- Apps: open any app on the display — confirm with the app name
+- General knowledge, conversation, advice — answer directly and briefly
 
-IMPORTANT RULES:
-- Never say "I can't" for things listed above — those are handled by the system
-- Keep responses SHORT — 1-2 sentences maximum
-- Never mention being an AI unless directly asked
-- Speak in present tense — "Checking your emails" not "I will check your emails"
-- If someone says "turn on light", "lights on", "lights off" — say "Lights on." or "Lights off." — one word responses are fine
-- For navigation requests like "open weather", "open emails", "go to apps" — respond with just the action confirmation: "Opening weather." "Here are your emails."
-- AURA's tone: calm, present, slightly poetic. Not robotic. Not overly friendly.
-- When asked the time or date, USE THE EXACT VALUES provided below — do not say "check a clock" or "I don't have access".
+NEVER:
+- Mention being an AI unless directly asked
+- Say "I can't" for anything listed above — those are handled by the system
+- Over-explain or add unnecessary context
+- Sound like a customer service agent
+
+When asked the time or date, use the exact values provided at the end of this prompt.
 
 Respond in JSON with this structure:
 {
@@ -127,3 +140,60 @@ def clear_conversation():
     """Clear conversation context (useful for testing or starting fresh)"""
     current_conversation.clear()
     print("[Context] Conversation cleared")
+
+
+STREAM_SYSTEM_PROMPT = SYSTEM_PROMPT.split("Respond in JSON")[0].strip() + \
+    "\n\nRespond in plain spoken sentences only. No JSON, no lists, no formatting."
+
+
+def ask_aura_stream(user_input: str):
+    """
+    Stream GPT response, yielding one complete sentence at a time.
+    Saves the full reply to conversation context when done.
+    """
+    from datetime import datetime
+    now = datetime.now()
+    time_str = now.strftime("%I:%M %p").lstrip("0")
+    date_str = now.strftime("%A, %B %d, %Y")
+    dynamic_prompt = STREAM_SYSTEM_PROMPT + f"\n\nCurrent date and time: {date_str}, {time_str}."
+
+    messages = [{"role": "system", "content": dynamic_prompt}]
+    messages.extend(current_conversation.get_messages_for_gpt())
+    messages.append({"role": "user", "content": user_input})
+
+    try:
+        stream = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            temperature=0.8,
+            max_tokens=300,
+            stream=True,
+        )
+
+        buffer = ""
+        full_reply = ""
+
+        for chunk in stream:
+            token = chunk.choices[0].delta.content or ""
+            buffer += token
+            full_reply += token
+
+            # Yield each complete sentence as it arrives
+            parts = SENTENCE_END.split(buffer)
+            while len(parts) > 1:
+                sentence = parts.pop(0).strip()
+                if sentence:
+                    yield sentence
+                buffer = parts[0] if parts else ""
+
+        # Yield any remaining text
+        if buffer.strip():
+            yield buffer.strip()
+
+        # Save full exchange to memory
+        if full_reply.strip():
+            current_conversation.add_exchange(user_input, full_reply.strip())
+
+    except Exception as e:
+        print(f"[GPT Stream] Error: {e}")
+        yield "I'm having a moment. Try again."

@@ -1,87 +1,67 @@
-# wake/wake_word.py — Porcupine wake-word listener with callback support
-import pvporcupine
-import pyaudio
-import struct
 import threading
+import numpy as np
+import pyaudio
+import openwakeword
+from openwakeword.model import Model
+
+CHUNK = 1280        # 80ms at 16kHz — openwakeword's expected chunk size
+SAMPLERATE = 16000
+THRESHOLD = 0.65    # detection confidence threshold
 
 
 class WakeWordListener:
-    def __init__(self, keyword="computer", callback=None):
-        """
-        Initialize Porcupine wake word listener.
-        
-        Args:
-            keyword: Built-in keyword to detect (e.g., "computer")
-            callback: Function to call when wake word is detected
-        """
-        print("[Wake] Using Porcupine keyword:", keyword)
+    def __init__(self, callback=None):
+        print("[Wake] Loading OpenWakeWord — Hey Jarvis model")
+        openwakeword.utils.download_models()
 
-        # Porcupine access key
-        ACCESS_KEY = "C/GbgEgHE9y+nXGU1NdM0Ictqf72eE3JzGDxLyxcEdfm65eDPR7vVw=="
-
-        # Create Porcupine instance with built-in keyword
-        self.porcupine = pvporcupine.create(
-            access_key=ACCESS_KEY,
-            keywords=[keyword]
+        self.model = Model(
+            wakeword_models=["hey_jarvis_v0.1.onnx"],
+            inference_framework="onnx"
         )
-
         self.callback = callback
         self.is_listening = False
         self.thread = None
-
-        # Initialize PyAudio
         self.pa = pyaudio.PyAudio()
-        self.stream = self.pa.open(
-            rate=self.porcupine.sample_rate,
-            channels=1,
-            format=pyaudio.paInt16,
-            input=True,
-            frames_per_buffer=self.porcupine.frame_length
-        )
-
-        print(f"[Wake] Say '{keyword}' to activate AURA.\n")
+        print("[Wake] Say 'Hey Jarvis' to activate AURA.\n")
 
     def start(self):
-        """Start the wake word listener in a separate thread."""
         if self.is_listening:
-            print("[Wake] Listener is already running.")
             return
-
         self.is_listening = True
         self.thread = threading.Thread(target=self._listen, daemon=True)
         self.thread.start()
         print("[Wake] Listener started.")
 
     def stop(self):
-        """Stop the wake word listener and clean up resources."""
-        if not self.is_listening:
-            print("[Wake] Listener is not running.")
-            return
-
         self.is_listening = False
         if self.thread:
-            self.thread.join()
-        self.stream.stop_stream()
-        self.stream.close()
-        self.porcupine.delete()
+            self.thread.join(timeout=2)
         self.pa.terminate()
-        print("[Wake] Listener stopped and resources cleaned up.")
+        print("[Wake] Listener stopped.")
 
     def _listen(self):
-        """Internal method to listen for the wake word."""
+        stream = self.pa.open(
+            rate=SAMPLERATE,
+            channels=1,
+            format=pyaudio.paInt16,
+            input=True,
+            frames_per_buffer=CHUNK
+        )
         try:
             while self.is_listening:
-                pcm = self.stream.read(
-                    self.porcupine.frame_length,
-                    exception_on_overflow=False
-                )
-                pcm = struct.unpack_from("h" * self.porcupine.frame_length, pcm)
-                result = self.porcupine.process(pcm)
-                if result >= 0:
-                    print("[Wake] Wake word detected!")
-                    if self.callback:
-                        self.callback()
+                raw = stream.read(CHUNK, exception_on_overflow=False)
+                audio = np.frombuffer(raw, dtype=np.int16)
+                prediction = self.model.predict(audio)
+
+                for name, score in prediction.items():
+                    if score >= THRESHOLD:
+                        print(f"[Wake] Detected '{name}' (score: {score:.2f})")
+                        self.model.reset()
+                        if self.callback:
+                            self.callback()
+                        break
         except Exception as e:
-            print(f"[Wake] Error in listener: {e}")
+            print(f"[Wake] Error: {e}")
         finally:
-            self.stop()
+            stream.stop_stream()
+            stream.close()
