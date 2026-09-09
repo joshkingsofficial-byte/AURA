@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { startTestSession, endTestSession, getSessionId, nextInteractionId } from '../testSession';
 
 const REALTIME_WS_URL = 'ws://localhost:8766/realtime-ws';
 const HOTWORDS = ['hey jarvis', 'hey aura', 'computer'];
@@ -274,7 +275,13 @@ function int16ToFloat32(pcm16) {
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
-import { startTestSession, endTestSession, getSessionId, nextInteractionId } from '../testSession';
+function logSession(id, msg) {
+  console.log(`[SESSION ${id || 'none'}] ${msg}`);
+}
+
+function logHotword(msg) {
+  console.log(`[HOTWORD] ${msg}`);
+}
 
 // Fire-and-forget test log write — must never affect AURA's behavior or block the caller.
 function logTestInteraction(entry) {
@@ -305,6 +312,8 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
   const orbReturningTimerRef = useRef(null);
   const isSpeakingRef = useRef(false);
   const lastUserTranscriptRef = useRef('');
+  const hotwordRecRef = useRef(null);
+  const expectedCloseRef = useRef(false);
 
   const cb = useRef({});
   cb.current = { onNavigate, onWake, setIsListening, setIsThinking, setReply, wsRef };
@@ -312,6 +321,20 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
   const updateStatus = useCallback((s) => {
     setSessionStatus(s);
     sessionStatusRef.current = s;
+    if (s === 'connecting' || s === 'active' || s === 'idle') logSession(getSessionId(), s);
+  }, []);
+
+  // Only call after the session has reached idle — never from mid-session code.
+  const resumeHotwordSafely = useCallback(() => {
+    setTimeout(() => {
+      if (sessionStatusRef.current !== 'idle') return;
+      try {
+        hotwordRecRef.current?.start();
+        logHotword('resumed');
+      } catch (error) {
+        logHotword(`restart skipped reason=${error?.message}`);
+      }
+    }, 300);
   }, []);
 
   const setOrb = useCallback((state) => {
@@ -343,18 +366,29 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
       streamRef.current.getTracks().forEach(t => { try { t.stop(); } catch (e) {} });
       streamRef.current = null;
     }
-    if (realtimeWsRef.current) { try { realtimeWsRef.current.close(); } catch (e) {} realtimeWsRef.current = null; }
+    if (realtimeWsRef.current) {
+      expectedCloseRef.current = true;
+      try { realtimeWsRef.current.close(); } catch (e) {}
+      realtimeWsRef.current = null;
+    }
     if (playbackCtxRef.current) { if (playbackCtxRef.current.state !== 'closed') playbackCtxRef.current.close().catch(() => {}); playbackCtxRef.current = null; }
     nextPlayTimeRef.current = 0;
     pendingCallsRef.current = {};
   }, []);
 
-  const endSession = useCallback(() => {
+  const endSession = useCallback((reason = 'user_requested') => {
+    if (sessionStatusRef.current === 'idle' || sessionStatusRef.current === 'closing') return;
+
+    updateStatus('closing');
+    logSession(getSessionId(), `closing reason=${reason}`);
+
     releaseResources();
     setOrb('returning');
     updateStatus('idle');
     cb.current.setIsListening?.(false);
     cb.current.setIsThinking?.(false);
+
+    resumeHotwordSafely();
 
     const { sessionId, startedAt } = endTestSession();
     if (sessionId) {
@@ -366,7 +400,7 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
         }).catch(() => {});
       } catch (e) {}
     }
-  }, [releaseResources, updateStatus, setOrb]);
+  }, [releaseResources, updateStatus, setOrb, resumeHotwordSafely]);
 
   const sendRt = useCallback((obj) => {
     const ws = realtimeWsRef.current;
@@ -709,16 +743,39 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
   }, []);
 
   const startSession = useCallback(async () => {
-    if (sessionStatusRef.current !== 'idle') return;
+    logSession(null, 'start requested');
+    if (sessionStatusRef.current !== 'idle') {
+      logSession(null, `ignored state=${sessionStatusRef.current}`);
+      return;
+    }
 
     startTestSession();
+
+    // Synchronous, before any await — closes the window a second activation
+    // could slip through the idle guard above.
+    updateStatus('connecting');
+
+    // Only tear down if something stale actually needs clearing.
+    if (
+      realtimeWsRef.current ||
+      streamRef.current ||
+      playbackCtxRef.current ||
+      captureCtxRef.current
+    ) {
+      releaseResources();
+    }
+
+    try { hotwordRecRef.current?.stop(); } catch (e) {}
+    logHotword('paused');
+
+    await new Promise(resolve => setTimeout(resolve, 150));
+
     logTestInteraction({ event_type: 'session_start', screen: screenRef?.current, app: currentAppRef?.current });
 
     playDing();
     cb.current.onWake?.();
     cb.current.setIsListening?.(true);
     cb.current.setReply?.('');
-    updateStatus('connecting');
 
     try {
       // Load persisted user profile to inject into this session
@@ -771,7 +828,12 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
 
       rtWs.onclose = () => {
         console.log('[Realtime] Relay closed');
-        if (sessionStatusRef.current !== 'idle') endSession();
+        realtimeWsRef.current = null;
+        if (expectedCloseRef.current) {
+          expectedCloseRef.current = false;
+        } else {
+          endSession('ws_closed_unexpected');
+        }
       };
 
       rtWs.onerror = (e) => {
@@ -825,10 +887,7 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
 
     } catch (err) {
       console.error('[Realtime] Session start FAILED:', err.message, err);
-      releaseResources();
-      updateStatus('idle');
-      cb.current.setIsListening?.(false);
-      cb.current.setIsThinking?.(false);
+      endSession('start_failed');
       cb.current.setReply?.('FAIL: ' + (err.message || String(err)));
     }
   }, [playDing, updateStatus, endSession, releaseResources]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -841,8 +900,8 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
       return;
     }
 
-    let cancelled = false;
     const rec = new SR();
+    hotwordRecRef.current = rec;
     rec.continuous = true;
     rec.interimResults = false;
     rec.lang = 'en-US';
@@ -860,11 +919,12 @@ export function useRealtimeVoice({ wsRef, onNavigate, onWake, setIsListening, se
     rec.onerror = (e) => {
       if (e.error !== 'no-speech') console.warn('[Realtime] SpeechRecognition error:', e.error);
     };
-    rec.onend = () => { if (!cancelled) try { rec.start(); } catch (e) {} };
+    // Ownership rule: onend never restarts recognition itself — only
+    // resumeHotwordSafely() may, and only once the session is back to idle.
+    rec.onend = () => { logHotword('recognition ended'); };
     try { rec.start(); } catch (e) {}
 
     return () => {
-      cancelled = true;
       try { rec.stop(); } catch (e) {}
     };
   }, [startSession]);

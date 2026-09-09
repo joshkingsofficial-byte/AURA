@@ -13,7 +13,21 @@ from datetime import datetime, timezone
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG_DIR = os.path.join(BASE_DIR, "data", "test_logs")
 
-_SECRET_KEY_PATTERN = re.compile(r"key|token|secret|password|authorization", re.IGNORECASE)
+_SECRET_KEY_PATTERN = re.compile(r"key|token|secret|password|authorization|cookie", re.IGNORECASE)
+
+# Catches secrets embedded in string *values* even under an innocuous key
+# (e.g. a raw header dump inside a tool_result or error message).
+_SECRET_VALUE_PATTERNS = [
+    re.compile(r"Bearer\s+\S+", re.IGNORECASE),
+    re.compile(r"sk-[A-Za-z0-9_-]{6,}"),
+    re.compile(r"(refresh_token|client_secret|access_token|api[_-]?key)[\"']?\s*[:=]\s*[\"']?[\w.\-]+", re.IGNORECASE),
+]
+
+
+def _redact_string(s):
+    for pattern in _SECRET_VALUE_PATTERNS:
+        s = pattern.sub("[redacted]", s)
+    return s
 
 
 def _redact(value):
@@ -24,6 +38,8 @@ def _redact(value):
         }
     if isinstance(value, list):
         return [_redact(v) for v in value]
+    if isinstance(value, str):
+        return _redact_string(value)
     return value
 
 
