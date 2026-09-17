@@ -33,5 +33,7 @@ export const NOW_PLAYING_SOURCE = 'mock'; // 'mock' | future: 'spotify-connect' 
 
 // ── ART (Phase 1) ────────────────────────────────────────────────────────────
 // Hosted Programme rotation is explicitly out of scope (open question #1) —
-// one local test asset only, for now.
-export const ART_TEST_ASSET_PATH = null; // set in Phase 1 to a local test image/video path
+// one local test asset only, for now. The asset itself is an original,
+// abstract placeholder created for development — not real/final artwork.
+export const ART_TEST_ASSET_PATH = '/aura001-dev/dev-test-artwork.svg';
+export const ART_TEST_ASSET_TYPE = 'image'; // 'image' | 'video'
