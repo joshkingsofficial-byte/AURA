@@ -1,0 +1,57 @@
+/* AURA 001 — AuraTrace styles (Phase 3 development prototype).
+   Development starting values, not final. Durations/opacities are driven
+   entirely by CSS custom properties set from aura001/constants.js so no
+   number here is a second source of truth. */
+
+.aura-trace-wordmark {
+  opacity: 0;
+  animation: aura-trace-wordmark-fade var(--wordmark-fade-ms) ease forwards;
+}
+
+@keyframes aura-trace-wordmark-fade {
+  from { opacity: 0; }
+  to   { opacity: var(--wordmark-opacity); }
+}
+
+/* Base perimeter line — progressively "drawn" via stroke-dashoffset, using
+   pathLength="1" normalization so this works regardless of actual on-screen
+   path length. Starts after the wordmark fade (animation-delay). */
+.aura-trace-base-path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: aura-trace-reveal var(--trace-enter-ms) ease-out var(--wordmark-fade-ms) forwards;
+}
+
+@keyframes aura-trace-reveal {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* Brighter travelling head, layered on top of the base line — a short dash
+   of length --tail-length that moves from the origin to the path end in
+   sync with the base line's reveal (same duration + delay), then fades out
+   over its final approach rather than an abrupt cut. */
+.aura-trace-head-path {
+  stroke-dasharray: var(--tail-length) 999;
+  stroke-dashoffset: var(--tail-length);
+  opacity: 0;
+  animation: aura-trace-head-travel var(--trace-enter-ms) ease-out var(--wordmark-fade-ms) forwards;
+}
+
+@keyframes aura-trace-head-travel {
+  0%   { stroke-dashoffset: var(--tail-length); opacity: var(--head-opacity); }
+  90%  { opacity: var(--head-opacity); }
+  100% { stroke-dashoffset: calc(var(--tail-length) - 1); opacity: 0; }
+}
+
+/* Resting perimeter — fully drawn (dashoffset fixed at 0 inline), slow
+   opacity-only oscillation. No scale/transform, per the "no frame jump"
+   direction. */
+.aura-trace-breathing {
+  animation: aura-trace-breathe var(--breath-ms) ease-in-out infinite alternate;
+}
+
+@keyframes aura-trace-breathe {
+  from { opacity: var(--breath-min-opacity); }
+  to   { opacity: var(--breath-max-opacity); }
+}
