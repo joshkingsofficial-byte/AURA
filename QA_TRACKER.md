@@ -37,4 +37,12 @@ evolved) is **Closed**, not silently deleted and not left open forever.
 
 ---
 
+## AURA 001 (simplification, branch `aura-001-simplification`)
+
+| ID | Status | Notes |
+|----|--------|-------|
+| A1 | 🟡 Open | Strict `CI=true` build surfaces 2 pre-existing ESLint warnings: `WidgetOverlay.js` (`'isActive' is assigned a value but never used`) and `useRealtimeVoice.js` (`React Hook useEffect has a missing dependency: 'setOrb'`). Present before Phase 0 scaffolding was added — deliberately not fixed in Phase 0. Standard `npm run build` (no CI flag) is unaffected and succeeds. |
+
+---
+
 *Closed items stay in this table with their resolution reasoning — history matters more than a clean list.*
