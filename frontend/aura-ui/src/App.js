@@ -8,6 +8,7 @@ import VisionOverlay from "./components/VisionOverlay";
 import { APPS } from "./components/AppGrid";
 import { useRealtimeVoice } from "./hooks/useRealtimeVoice";
 import ArtState from "./aura001/ArtState"; // AURA 001 Phase 1 — dev-only preview, see gate below
+import RevealSequence from "./aura001/RevealSequence"; // AURA 001 Phase 2 — dev-only preview, see gate below
 
 const WS_URL = "ws://localhost:8765";
 
@@ -360,17 +361,24 @@ export default function App() {
   });
   sessionStatusRef.current = sessionStatus;
 
-  // ── AURA 001 dev-only ART preview (Phase 1) ──────────────────────────────
+  // ── AURA 001 dev-only previews (Phase 1 + Phase 2) ───────────────────────
   // Not part of the production screen flow and not the default — reachable
   // only in a development build via an explicit opt-in query param
-  // (?aura001=art), never through any UI control. This is a true early
-  // return (after all hooks above have run), so none of V0's idle/home/app
-  // screens, WidgetOverlay, or VisionOverlay ever mount alongside it.
+  // (?aura001=art or ?aura001=reveal), never through any UI control. This
+  // is a true early return (after all hooks above have run), so none of
+  // V0's idle/home/app screens, WidgetOverlay, or VisionOverlay ever mount
+  // alongside either preview.
   if (
     process.env.NODE_ENV === "development" &&
     new URLSearchParams(window.location.search).get("aura001") === "art"
   ) {
     return <ArtState />;
+  }
+  if (
+    process.env.NODE_ENV === "development" &&
+    new URLSearchParams(window.location.search).get("aura001") === "reveal"
+  ) {
+    return <RevealSequence />;
   }
 
   // Dev buttons — only show in development
