@@ -2,25 +2,33 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ArtState from './ArtState';
 import MirrorSurfacePlaceholder from './MirrorSurfacePlaceholder';
 import AuraTrace from './AuraTrace';
+import MirrorState from './MirrorState';
 import { AURA001_STATES } from './states';
 import { REVEAL_MS, STILLNESS_IN_MS, TRACE_ENTER_MS, WORDMARK_FADE_MS } from './constants';
 
-// AURA 001 — development sequence controller (Phase 2 + Phase 3).
+// AURA 001 — development sequence controller (Phase 2 + 3 + 4).
 //
 // Drives ART -> REVEALING -> STILLNESS_IN -> TRACE_ENTERING -> MIRROR using
 // the Phase 0 state machine and named constants. Dev-only: mounted
 // exclusively behind the ?aura001=reveal gate in App.js, the same pattern
 // as Phase 1's ?aura001=art.
 //
-// MIRROR here is Phase 3's verification meaning only: bare reflection
-// surface + wordmark + breathing Trace. No functional information
-// (time/date/weather/music) — that's Phase 4, not built here.
-//
 // Layering: MirrorSurfacePlaceholder always sits underneath. ArtState sits
 // above it while in ART/REVEALING only (see showArtLayer below), fading
 // via CSS opacity over REVEAL_MS. Once STILLNESS_IN is reached, ArtState is
 // unmounted entirely. AuraTrace mounts only from TRACE_ENTERING onward and
 // owns its own entering choreography and breathing loop internally.
+//
+// AuraTrace ownership (Phase 4 decision): AuraTrace's render condition
+// (showTrace) and mount point are UNCHANGED from Phase 3 — it continues to
+// render across both TRACE_ENTERING and MIRROR from right here. MirrorState
+// is a purely additive sibling that mounts only once state === MIRROR,
+// adding time/date/music/weather alongside the already-running Trace. This
+// was a deliberate choice over having MirrorState own/render AuraTrace
+// itself: since AuraTrace's component identity and render condition never
+// change across the TRACE_ENTERING -> MIRROR transition, React never
+// unmounts/remounts it, so there is no flicker or restart at the moment
+// functional information appears — only a new sibling appears next to it.
 //
 // Transition lock: trigger() is a no-op unless the current state is ART,
 // so a repeated trigger during any later state cannot restart or corrupt
@@ -91,6 +99,7 @@ export default function RevealSequence() {
         </div>
       )}
       {showTrace && <AuraTrace phase={tracePhase} />}
+      {state === AURA001_STATES.MIRROR && <MirrorState />}
     </div>
   );
 }

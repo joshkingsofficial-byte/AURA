@@ -46,4 +46,29 @@ evolved) is **Closed**, not silently deleted and not left open forever.
 
 ---
 
+## AURA 001 Visual Refinement (unresolved, post-Phase-4)
+
+Design approved architecturally; visual execution is explicitly NOT final.
+These items are deliberately not fixed now — they belong to a later
+visual/physical refinement pass, once the full composition can be judged
+in context rather than piecemeal.
+
+| ID | Status | Notes |
+|----|--------|-------|
+| VR1 | 🟡 Open | Trace resting appearance — current prototype reads too much like an illuminated display border. Later refinement should explore thinner, quieter, less-uniform presence. |
+| VR2 | 🟡 Open | Trace / wordmark relationship — AURA must feel like the origin of the Trace, not text sitting inside a gap in a border. |
+| VR3 | 🟡 Open | Living Weather — current motion proves the architecture but is visually too glyph-like. Later visual study should develop a more atmospheric treatment while preserving restraint. |
+| VR4 | 🟡 Open | Typography — current typography is developmental only. Final AURA 001 typographic identity remains unresolved. |
+| VR5 | 🟡 Open | Physical proportions — do not finalise Mirror spacing/composition against the current laptop viewport. Final visual refinement must use the proportions of the physical AURA 001. |
+
+**Design constraint (record, do not implement yet):**
+
+> "The transition has rhythm, but never obstructs intention."
+
+Originates from the Presence critique that a visitor requesting MIRROR may
+genuinely need the mirror quickly. The Reveal/Trace must never become
+spectacle at the expense of function.
+
+---
+
 *Closed items stay in this table with their resolution reasoning — history matters more than a clean list.*

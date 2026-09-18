@@ -52,3 +52,23 @@ export const NOW_PLAYING_SOURCE = 'mock'; // 'mock' | future: 'spotify-connect' 
 // abstract placeholder created for development — not real/final artwork.
 export const ART_TEST_ASSET_PATH = '/aura001-dev/dev-test-artwork.svg';
 export const ART_TEST_ASSET_TYPE = 'image'; // 'image' | 'video'
+
+// ── MIRROR composition (Phase 4) ─────────────────────────────────────────────
+// Breathing room for time/music/weather beyond the Trace's own edge inset,
+// so functional information sits clearly inside the frame, not crowding it.
+export const MIRROR_CONTENT_INSET = 56; // px from screen edge — open question #7/#8
+
+// Music is observed, not controlled. Real exhibition-audio integration is
+// explicitly unresolved (see NOW_PLAYING_SOURCE above, Phase 6 territory).
+// This is the mock track shown when NOW_PLAYING_SOURCE === 'mock'.
+export const MOCK_NOW_PLAYING_TRACK = { title: 'NIGHTS', artist: 'Frank Ocean' };
+
+// Installation location is separate from any visitor-facing setup — these
+// stay null until a real installation configures them. null falls back to
+// browser geolocation, which is a DEVELOPMENT convenience only (no consumer
+// location onboarding is being built here).
+export const INSTALLATION_LATITUDE = null;
+export const INSTALLATION_LONGITUDE = null;
+export const WEATHER_REFRESH_MS = 30 * 60 * 1000; // 30 min, matches V0's existing refresh cadence
+export const WIND_CONDITION_THRESHOLD_KMH = 30; // above this, condition becomes WIND regardless of weathercode — open question #8
+export const DEV_WEATHER_OVERRIDE_TEMP = 12; // shown temp when a dev-only ?weather= override is active
