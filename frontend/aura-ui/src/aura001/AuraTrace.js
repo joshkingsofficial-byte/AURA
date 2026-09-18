@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import './AuraTrace.css';
+import { buildWordmarkGeometry } from './wordmarkGeometry';
 import {
   TRACE_LINE_WIDTH,
   TRACE_BASE_OPACITY,
@@ -10,40 +11,48 @@ import {
   TRACE_BREATH_MS,
   TRACE_EDGE_INSET,
   TRACE_CORNER_RADIUS,
-  TRACE_WORDMARK_GAP_PX,
   TRACE_ENTER_MS,
-  WORDMARK_LETTER_SPACING,
+  WORDMARK_GLYPH_SCALE,
+  WORDMARK_LETTER_GAP_PX,
   WORDMARK_OPACITY,
   WORDMARK_FADE_MS,
 } from './constants';
 
-// AURA 001 — AuraTrace (Phase 3 development prototype).
+// AURA 001 — AuraTrace (Phase 3 development prototype; Trace-origin
+// corrected per design review).
 //
 // DEVELOPMENT NOTE: this is a structural/motion prototype — it proves the
 // mechanism (perimeter geometry, dual-direction travel, corner continuity,
 // entering -> breathing), not a finished look. Every visual value here
-// (line width, opacities, tail length, breath timing, wordmark spacing) is
-// a starting point, not an artistic decision. Final Trace appearance must
-// be visually reviewed on the physical two-way mirror, not judged on a
-// development monitor — screen and mirror-glass rendering differ enough
+// (line width, opacities, tail length, breath timing, wordmark geometry)
+// is a starting point, not an artistic decision. Final Trace appearance
+// must be visually reviewed on the physical two-way mirror, not judged on
+// a development monitor — screen and mirror-glass rendering differ enough
 // that tuning here is provisional by nature.
 //
 // "AURA does not sit in front of the viewer. She surrounds them." The
-// wordmark sits at top-centre and IS the origin of two mirrored traces
-// that travel outward across the top edge, around the top corners, down
-// the sides, around the bottom corners, and meet at bottom-centre — one
-// continuous perimeter journey split into two directions, not four
-// disconnected edge animations, so corner movement stays continuous.
+// wordmark is not text sitting beside the Trace in a gap — the horizontal
+// crossbar inside each of the two A's IS the first segment of that side's
+// Trace path (see wordmarkGeometry.js). Both letters and paths share one
+// SVG coordinate space so the crossbar and the travelling stroke are
+// literally the same element, not two things merely aligned. Steps: the
+// static (non-crossbar) letter strokes fade in with the wordmark; then the
+// SAME dashoffset reveal that draws the crossbar continues, uninterrupted,
+// out of the letter, across the top edge, around the corners, and down to
+// bottom-centre — one continuous stroke per side, not a separate "connect
+// to the letter" animation.
 //
 // Supports three phases (ENTERING / BREATHING / LEAVING) per the state
 // machine, but Phase 3 only visually choreographs ENTERING -> BREATHING.
 // LEAVING is architecturally present (so the prop/state shape won't need
 // to change in Phase 5) but intentionally renders as a static resting
-// perimeter for now — its real choreography belongs to Phase 5.
+// perimeter for now. A future Return should be able to reverse the same
+// paths built here — travelling inward and terminating back into these
+// same two crossbars — without new geometry, only a reversed reveal.
 //
 // This is explicitly a development prototype proving the mechanism, not
-// final visual polish — see the Phase 3 report for an honest assessment
-// of where the current look is crude.
+// final visual polish — see the Phase 3/correction reports for an honest
+// assessment of where the current look is crude.
 
 function useViewportSize() {
   const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
@@ -55,31 +64,45 @@ function useViewportSize() {
   return size;
 }
 
-// Two mirrored paths, each starting at top-centre (either side of the
-// wordmark gap) and ending at bottom-centre — a right-going path (through
-// the top-right and bottom-right corners) and a left-going path (through
-// the top-left and bottom-left corners). Corner sweep-flags are opposite
-// mirrors of each other since the two paths trace the perimeter in
-// opposite rotational directions from the same starting line.
-function buildPerimeterPaths(w, h) {
+// Two mirrored paths, each starting INSIDE a letter — at the inner end of
+// that A's crossbar — drawing across the crossbar, then continuing out of
+// the letter to the nearest top corner, down that side, around the bottom
+// corner, and in to bottom-centre. One continuous journey per direction,
+// not four disconnected edge animations, so corner movement stays
+// continuous and the crossbar-to-perimeter join has no seam.
+function buildPerimeterPaths(w, h, wordmark) {
   const inset = TRACE_EDGE_INSET;
   const r = TRACE_CORNER_RADIUS;
-  const gapHalf = TRACE_WORDMARK_GAP_PX / 2;
   const left = inset;
   const right = w - inset;
   const top = inset;
   const bottom = h - inset;
   const cx = w / 2;
 
-  const rightPath = `M ${cx + gapHalf} ${top} L ${right - r} ${top} A ${r} ${r} 0 0 1 ${right} ${top + r} L ${right} ${bottom - r} A ${r} ${r} 0 0 1 ${right - r} ${bottom} L ${cx} ${bottom}`;
-  const leftPath = `M ${cx - gapHalf} ${top} L ${left + r} ${top} A ${r} ${r} 0 0 0 ${left} ${top + r} L ${left} ${bottom - r} A ${r} ${r} 0 0 0 ${left + r} ${bottom} L ${cx} ${bottom}`;
+  const { firstCrossbar, lastCrossbar } = wordmark;
+
+  const leftPath =
+    `M ${firstCrossbar.innerX} ${firstCrossbar.y} L ${firstCrossbar.outerX} ${firstCrossbar.y} ` +
+    `L ${left + r} ${top} A ${r} ${r} 0 0 0 ${left} ${top + r} ` +
+    `L ${left} ${bottom - r} A ${r} ${r} 0 0 0 ${left + r} ${bottom} L ${cx} ${bottom}`;
+
+  const rightPath =
+    `M ${lastCrossbar.innerX} ${lastCrossbar.y} L ${lastCrossbar.outerX} ${lastCrossbar.y} ` +
+    `L ${right - r} ${top} A ${r} ${r} 0 0 1 ${right} ${top + r} ` +
+    `L ${right} ${bottom - r} A ${r} ${r} 0 0 1 ${right - r} ${bottom} L ${cx} ${bottom}`;
 
   return [leftPath, rightPath];
 }
 
 export default function AuraTrace({ phase = 'entering' }) {
   const { w, h } = useViewportSize();
-  const paths = buildPerimeterPaths(w, h);
+  const wordmark = buildWordmarkGeometry({
+    cx: w / 2,
+    topY: TRACE_EDGE_INSET,
+    scale: WORDMARK_GLYPH_SCALE,
+    letterGap: WORDMARK_LETTER_GAP_PX,
+  });
+  const paths = buildPerimeterPaths(w, h, wordmark);
 
   const isEntering = phase === 'entering';
   const isBreathing = phase === 'breathing';
@@ -99,24 +122,21 @@ export default function AuraTrace({ phase = 'entering' }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', ...cssVars }}>
-      <div
-        className="aura-trace-wordmark"
-        style={{
-          position: 'absolute',
-          top: `${TRACE_EDGE_INSET - 4}px`,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          fontSize: '13px',
-          fontWeight: 200,
-          letterSpacing: WORDMARK_LETTER_SPACING,
-          color: '#c8a96e',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        AURA
-      </div>
-
       <svg width={w} height={h} style={{ position: 'absolute', top: 0, left: 0 }}>
+        {/* Static letter strokes — everything except the two crossbars,
+            which belong to the animated perimeter paths below. */}
+        <g className="aura-trace-wordmark">
+          {wordmark.staticStrokes.map((s, i) => (
+            <line
+              key={i}
+              x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
+              stroke="#c8a96e"
+              strokeWidth={TRACE_LINE_WIDTH}
+              strokeLinecap="round"
+            />
+          ))}
+        </g>
+
         {paths.map((d, i) => (
           <React.Fragment key={i}>
             <path

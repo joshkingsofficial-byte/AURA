@@ -56,18 +56,28 @@ in context rather than piecemeal.
 | ID | Status | Notes |
 |----|--------|-------|
 | VR1 | 🟡 Open | Trace resting appearance — current prototype reads too much like an illuminated display border. Later refinement should explore thinner, quieter, less-uniform presence. |
-| VR2 | 🟡 Open | Trace / wordmark relationship — AURA must feel like the origin of the Trace, not text sitting inside a gap in a border. |
-| VR3 | 🟡 Open | Living Weather — current motion proves the architecture but is visually too glyph-like. Later visual study should develop a more atmospheric treatment while preserving restraint. |
-| VR4 | 🟡 Open | Typography — current typography is developmental only. Final AURA 001 typographic identity remains unresolved. |
+| VR2 | 🟡 Open | Trace / wordmark relationship — structurally corrected (each A's crossbar is now the literal first segment of its Trace path, not text beside a gap — see "feat: connect AURA Trace to A crossbars"). Visual refinement of that relationship still belongs to a later pass; not closing this item on the strength of the structural fix alone. |
+| VR3 | 🟡 Open | Living Atmosphere — current weather glyphs are architectural placeholders only. Final direction should explore AURA visually interpreting the real atmospheric conditions of her installation location rather than displaying conventional weather icons. Future study should include: detailed weather conditions and intensities (clear / partly cloudy / overcast, drizzle / rain / heavy rain, thunderstorms, fog / mist, snow / sleet), wind direction/intensity, day/night distinction, sunrise/sunset relationship, actual lunar phase, moon illumination (crescent / quarter / gibbous / full), atmospheric interaction between cloud/weather and moon where appropriate, and restrained transitions as real conditions change. Not to be implemented now. |
+| VR4 | 🟡 Open | Typography — current typography, including the hand-drawn "A U R A" development glyphs, is developmental only and must not be treated as the final AURA 001 typeface or wordmark. Locked concept regardless of final type choice: the horizontal crossbars of the first and final A are the origin/termination points of the AURA Trace — final typography must preserve this behaviour without being constrained to the current development glyphs. |
 | VR5 | 🟡 Open | Physical proportions — do not finalise Mirror spacing/composition against the current laptop viewport. Final visual refinement must use the proportions of the physical AURA 001. |
 
-**Design constraint (record, do not implement yet):**
+**Design constraints (record, do not implement yet):**
 
 > "The transition has rhythm, but never obstructs intention."
 
 Originates from the Presence critique that a visitor requesting MIRROR may
 genuinely need the mirror quickly. The Reveal/Trace must never become
 spectacle at the expense of function.
+
+> "The animation communicates atmosphere. The typography communicates fact."
+>
+> "Weather can move. It cannot demand attention."
+>
+> "AURA does not display a symbol for the world outside. She quietly
+> reflects its current state."
+
+Governs VR3 — Living Atmosphere is about AURA interpreting real conditions
+at her installation, not displaying conventional weather iconography.
 
 ---
 

@@ -24,10 +24,11 @@ export const TRACE_BREATH_MAX_OPACITY = 0.45; // open question #4
 export const TRACE_BREATH_MS = 4000; // one full breath cycle — open question #4
 export const TRACE_EDGE_INSET = 24; // px from true screen edge — open question #4
 export const TRACE_CORNER_RADIUS = 32; // px — open question #4
-export const TRACE_WORDMARK_GAP_PX = 160; // px reserved at top-centre where the two traces originate — implementation-required, open question #4/#7
 
-// ── Wordmark (integrated into the Trace's origin, Phase 3) ──────────────────
-export const WORDMARK_LETTER_SPACING = '0.5em'; // open question #7
+// ── Wordmark (custom-drawn glyphs; each A's crossbar IS the Trace's first
+// segment — see wordmarkGeometry.js) ─────────────────────────────────────
+export const WORDMARK_GLYPH_SCALE = 1.15; // scales the hand-drawn A/U/R/A strokes — open question #7
+export const WORDMARK_LETTER_GAP_PX = 6; // px between letters — open question #7
 export const WORDMARK_OPACITY = 0.85; // open question #7
 export const WORDMARK_FADE_MS = 500; // open question #7
 
