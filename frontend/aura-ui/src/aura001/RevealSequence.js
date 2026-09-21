@@ -1,105 +1,196 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import './RevealSequence.css';
 import ArtState from './ArtState';
 import MirrorSurfacePlaceholder from './MirrorSurfacePlaceholder';
 import AuraTrace from './AuraTrace';
 import MirrorState from './MirrorState';
 import { AURA001_STATES } from './states';
-import { REVEAL_MS, STILLNESS_IN_MS, TRACE_ENTER_MS, WORDMARK_FADE_MS } from './constants';
+import {
+  REVEAL_MS,
+  STILLNESS_IN_MS,
+  TRACE_ENTER_MS,
+  WORDMARK_FADE_MS,
+  INFO_RECEDE_MS,
+  INFO_CASCADE_OFFSET_MS,
+  STILLNESS_OUT_MS,
+  ART_RETURN_MS,
+} from './constants';
 
-// AURA 001 — development sequence controller (Phase 2 + 3 + 4).
+// AURA 001 — development sequence controller (Phase 2 + 3 + 4 + 5).
 //
-// Drives ART -> REVEALING -> STILLNESS_IN -> TRACE_ENTERING -> MIRROR using
-// the Phase 0 state machine and named constants. Dev-only: mounted
-// exclusively behind the ?aura001=reveal gate in App.js, the same pattern
-// as Phase 1's ?aura001=art.
+// Drives the complete cycle:
+//   ART -> REVEALING -> STILLNESS_IN -> TRACE_ENTERING -> MIRROR
+//   -> TRACE_LEAVING -> STILLNESS_OUT -> ART_RETURNING -> ART
+// using the Phase 0 state machine and named constants. Dev-only: mounted
+// exclusively behind the ?aura001=reveal gate in App.js.
 //
-// Layering: MirrorSurfacePlaceholder always sits underneath. ArtState sits
-// above it while in ART/REVEALING only (see showArtLayer below), fading
-// via CSS opacity over REVEAL_MS. Once STILLNESS_IN is reached, ArtState is
-// unmounted entirely. AuraTrace mounts only from TRACE_ENTERING onward and
-// owns its own entering choreography and breathing loop internally.
+// Dev trigger (Phase 5): the SAME click-anywhere affordance now drives
+// both directions — clicking while ART starts the entry sequence,
+// clicking while MIRROR starts The Return. Any other state (mid-
+// transition) is a no-op. This is deliberately the smallest possible
+// development trigger for Return: no new control, no visible affordance,
+// reusing the exact convention already established for entry, gated the
+// same way (only reachable via ?aura001=reveal in a development build).
 //
-// AuraTrace ownership (Phase 4 decision): AuraTrace's render condition
-// (showTrace) and mount point are UNCHANGED from Phase 3 — it continues to
-// render across both TRACE_ENTERING and MIRROR from right here. MirrorState
-// is a purely additive sibling that mounts only once state === MIRROR,
-// adding time/date/music/weather alongside the already-running Trace. This
-// was a deliberate choice over having MirrorState own/render AuraTrace
-// itself: since AuraTrace's component identity and render condition never
-// change across the TRACE_ENTERING -> MIRROR transition, React never
-// unmounts/remounts it, so there is no flicker or restart at the moment
-// functional information appears — only a new sibling appears next to it.
+// State machine choice, as asked to explain: TRACE_LEAVING is used as ONE
+// global state for the entire Return withdrawal. Final breath, Trace
+// retraction, wordmark hold, and wordmark fade are NOT separate global
+// states — they're internal to AuraTrace itself (see its file header),
+// which only calls handleTraceLeavingComplete() once all four finish.
+// This keeps the Phase 0 global enum exactly as already defined (no
+// expansion needed) while each internal step still gets its own timing
+// and CSS treatment where it actually lives. Information recession (this
+// file's own responsibility, driving MirrorState) happens BEFORE
+// AuraTrace is told to start its internal sequence at all — tracePhase
+// stays 'breathing' (not 'leaving') until the info cascade finishes, so
+// the two never run concurrently, matching the spec's sequential steps.
 //
-// Transition lock: trigger() is a no-op unless the current state is ART,
-// so a repeated trigger during any later state cannot restart or corrupt
-// the sequence — state progression stays deterministic.
+// Layering, ownership pattern: MirrorSurfacePlaceholder always sits
+// underneath everything. ArtState sits above it during ART/REVEALING
+// (fading out) and again during ART_RETURNING/ART (fading in) — see
+// showArtLayer/artOpacity below — and is genuinely unmounted the rest of
+// the time, including STILLNESS_OUT (same DOM-purity approach already
+// used for STILLNESS_IN, not relaxed for the second stillness). AuraTrace
+// mounts across TRACE_ENTERING/MIRROR/TRACE_LEAVING and owns its entering
+// and leaving choreography internally. MirrorState mounts from MIRROR
+// through the information-recession portion of TRACE_LEAVING only.
+//
+// Transition lock: entry and Return each guard on the CURRENT state (ART
+// for entry, MIRROR for Return) before doing anything, so a repeated
+// trigger during any transitional state is a no-op — one movement always
+// completes before another state-changing intention can occur.
 
 export default function RevealSequence() {
   const [state, setState] = useState(AURA001_STATES.ART);
   const stateRef = useRef(state);
   stateRef.current = state;
-  const revealTimerRef = useRef(null);
-  const stillnessTimerRef = useRef(null);
-  const traceTimerRef = useRef(null);
 
-  const trigger = useCallback(() => {
+  const [showMirrorInfo, setShowMirrorInfo] = useState(false);
+  const [infoReceding, setInfoReceding] = useState(false);
+  const [traceLeavingActive, setTraceLeavingActive] = useState(false);
+
+  const timersRef = useRef([]);
+  const addTimer = useCallback((fn, ms) => {
+    const id = setTimeout(fn, ms);
+    timersRef.current.push(id);
+    return id;
+  }, []);
+
+  const triggerEnter = useCallback(() => {
     if (stateRef.current !== AURA001_STATES.ART) return; // transition lock
 
     setState(AURA001_STATES.REVEALING);
 
-    revealTimerRef.current = setTimeout(() => {
+    addTimer(() => {
       setState(AURA001_STATES.STILLNESS_IN);
 
-      stillnessTimerRef.current = setTimeout(() => {
+      addTimer(() => {
         setState(AURA001_STATES.TRACE_ENTERING);
 
         // Total entering duration = wordmark fade, then the trace travels —
-        // matches AuraTrace's own internal CSS timing (animation-delay of
-        // WORDMARK_FADE_MS before the trace-reveal animation of
-        // TRACE_ENTER_MS begins), so this timer fires exactly as the
-        // visual choreography completes.
-        traceTimerRef.current = setTimeout(() => {
+        // matches AuraTrace's own internal CSS timing.
+        addTimer(() => {
           setState(AURA001_STATES.MIRROR);
+          setShowMirrorInfo(true);
         }, WORDMARK_FADE_MS + TRACE_ENTER_MS);
       }, STILLNESS_IN_MS);
     }, REVEAL_MS);
-  }, []);
+  }, [addTimer]);
 
-  useEffect(() => {
-    return () => {
-      clearTimeout(revealTimerRef.current);
-      clearTimeout(stillnessTimerRef.current);
-      clearTimeout(traceTimerRef.current);
-    };
-  }, []);
+  // The Return, Step 1: information recedes with a slight cascade before
+  // anything else happens. traceLeavingActive stays false (AuraTrace keeps
+  // breathing normally) until this finishes.
+  const triggerReturn = useCallback(() => {
+    if (stateRef.current !== AURA001_STATES.MIRROR) return; // transition lock
+
+    setState(AURA001_STATES.TRACE_LEAVING);
+    setInfoReceding(true);
+
+    // Last block to fade is delayed by 2 cascade steps; total duration is
+    // that delay plus its own fade time.
+    const totalInfoRecedeMs = INFO_RECEDE_MS + 2 * INFO_CASCADE_OFFSET_MS;
+    addTimer(() => {
+      setShowMirrorInfo(false);
+      setInfoReceding(false);
+      setTraceLeavingActive(true); // now AuraTrace starts final-breath -> withdrawal -> wordmark fade
+    }, totalInfoRecedeMs);
+  }, [addTimer]);
+
+  // Called by AuraTrace once its own 4-step leaving sequence (final
+  // breath -> trace withdrawal -> wordmark hold -> wordmark fade)
+  // finishes — see AuraTrace.js file header.
+  const handleTraceLeavingComplete = useCallback(() => {
+    setTraceLeavingActive(false); // reset so a future cycle waits for info-recede again
+    setState(AURA001_STATES.STILLNESS_OUT);
+
+    addTimer(() => {
+      setState(AURA001_STATES.ART_RETURNING);
+
+      addTimer(() => {
+        setState(AURA001_STATES.ART);
+      }, ART_RETURN_MS);
+    }, STILLNESS_OUT_MS);
+  }, [addTimer]);
+
+  const handleClick = useCallback(() => {
+    if (stateRef.current === AURA001_STATES.ART) triggerEnter();
+    else if (stateRef.current === AURA001_STATES.MIRROR) triggerReturn();
+    // Any other state: a transition is already in progress — no-op.
+  }, [triggerEnter, triggerReturn]);
+
+  useEffect(() => () => timersRef.current.forEach(clearTimeout), []);
 
   const inArt = state === AURA001_STATES.ART;
-  const showArtLayer = state === AURA001_STATES.ART || state === AURA001_STATES.REVEALING;
-  const showTrace = state === AURA001_STATES.TRACE_ENTERING || state === AURA001_STATES.MIRROR;
-  const tracePhase = state === AURA001_STATES.TRACE_ENTERING ? 'entering' : 'breathing';
+  const inArtReturning = state === AURA001_STATES.ART_RETURNING;
+  const showArtLayer = inArt || state === AURA001_STATES.REVEALING || inArtReturning;
+  const artOpacity = inArt || inArtReturning ? 1 : 0;
+
+  const showTrace =
+    state === AURA001_STATES.TRACE_ENTERING ||
+    state === AURA001_STATES.MIRROR ||
+    state === AURA001_STATES.TRACE_LEAVING;
+  const tracePhase =
+    state === AURA001_STATES.TRACE_ENTERING ? 'entering' :
+    (state === AURA001_STATES.TRACE_LEAVING && traceLeavingActive) ? 'leaving' :
+    'breathing';
 
   return (
-    // Click anywhere to invoke trigger() — a development-only convenience
-    // for starting the sequence and for testing the transition lock by
-    // clicking again mid-transition. Renders no visible affordance, so it
-    // introduces no UI/label/control of its own.
-    <div onClick={trigger} style={{ position: 'fixed', inset: 0 }}>
+    // Click anywhere to invoke handleClick() — development-only, drives
+    // both entry and Return depending on current state. Renders no
+    // visible affordance, so it introduces no UI/label/control of its own.
+    <div onClick={handleClick} style={{ position: 'fixed', inset: 0 }}>
       <MirrorSurfacePlaceholder />
+
+      {/* ART / REVEALING: existing opacity-transition fade-out, unchanged
+          from Phase 2. ART_RETURNING: a fresh mount using a CSS keyframe
+          (RevealSequence.css) rather than a transition, since ArtState is
+          genuinely absent throughout STILLNESS_OUT — a transition can't
+          animate a property change on an element that doesn't exist yet. */}
       {showArtLayer && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            opacity: inArt ? 1 : 0,
-            transition: `opacity ${REVEAL_MS}ms ease`,
-            pointerEvents: 'none',
-          }}
-        >
-          <ArtState />
-        </div>
+        inArtReturning ? (
+          <div
+            className="art-return-fade-in"
+            style={{ position: 'fixed', inset: 0, pointerEvents: 'none', '--art-return-ms': `${ART_RETURN_MS}ms` }}
+          >
+            <ArtState />
+          </div>
+        ) : (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              opacity: artOpacity,
+              transition: `opacity ${REVEAL_MS}ms ease`,
+              pointerEvents: 'none',
+            }}
+          >
+            <ArtState />
+          </div>
+        )
       )}
-      {showTrace && <AuraTrace phase={tracePhase} />}
-      {state === AURA001_STATES.MIRROR && <MirrorState />}
+
+      {showTrace && <AuraTrace phase={tracePhase} onLeavingComplete={handleTraceLeavingComplete} />}
+      {showMirrorInfo && <MirrorState receding={infoReceding} />}
     </div>
   );
 }

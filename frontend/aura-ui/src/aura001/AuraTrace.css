@@ -55,3 +55,54 @@
   from { opacity: var(--breath-min-opacity); }
   to   { opacity: var(--breath-max-opacity); }
 }
+
+/* The Return, Step 2: one deliberate breath, not part of the infinite
+   loop — same min/max amplitude as normal breathing, but a single,
+   distinct cycle signalling AURA is about to withdraw. */
+.aura-trace-final-breath {
+  animation: aura-trace-breathe var(--final-breath-ms) ease-in-out 1;
+}
+
+/* The Return, Step 3: the base line retracts from bottom-centre back to
+   the crossbar. Unlike the entering reveal (which shifts stroke-dashoffset
+   with a fixed dasharray), retracting the VISIBLE portion from its far end
+   means shrinking the dash length itself while its start stays anchored
+   at the crossbar (dashoffset fixed at 0) — so the remaining visible
+   stroke is always the piece nearest the letter, and what disappears is
+   the far (bottom-centre) end, progressively, not a uniform fade. */
+.aura-trace-withdraw-path {
+  stroke-dashoffset: 0;
+  animation: aura-trace-withdraw var(--trace-leave-ms) ease-in forwards;
+}
+
+@keyframes aura-trace-withdraw {
+  from { stroke-dasharray: 1 999; }
+  to   { stroke-dasharray: 0 999; }
+}
+
+/* The travelling head during withdrawal — separates from bottom-centre,
+   travels the same path backward, and arrives solidly at the crossbar
+   (no fade on arrival, since it terminates INTO the letter rather than
+   vanishing before reaching it). */
+.aura-trace-withdraw-head-path {
+  stroke-dasharray: var(--tail-length) 999;
+  opacity: 0;
+  animation: aura-trace-withdraw-head var(--trace-leave-ms) ease-in forwards;
+}
+
+@keyframes aura-trace-withdraw-head {
+  0%   { stroke-dashoffset: calc(var(--tail-length) - 1); opacity: 0; }
+  10%  { opacity: var(--head-opacity); }
+  100% { stroke-dashoffset: var(--tail-length); opacity: var(--head-opacity); }
+}
+
+/* The Return, Step 4 (second half): the wordmark fading away alone, after
+   the perimeter is gone. Reverse of aura-trace-wordmark-fade. */
+.aura-trace-wordmark-fade-out {
+  animation: aura-trace-wordmark-fade-out var(--wordmark-fade-ms) ease forwards;
+}
+
+@keyframes aura-trace-wordmark-fade-out {
+  from { opacity: var(--wordmark-opacity); }
+  to   { opacity: 0; }
+}

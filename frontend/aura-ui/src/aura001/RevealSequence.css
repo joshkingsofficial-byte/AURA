@@ -1,0 +1,17 @@
+/* AURA 001 — RevealSequence styles (Phase 5).
+   Only the ART_RETURNING fade-in needs a dedicated keyframe: a CSS
+   `transition` requires an already-mounted element to change a property
+   on, but ArtState is genuinely unmounted throughout STILLNESS_OUT (same
+   DOM-purity approach used for STILLNESS_IN in Phase 2) — so the fade-in
+   must play from a fresh mount, and only a `@keyframes` animation
+   (which runs its `from` state immediately on mount) does that. */
+
+.art-return-fade-in {
+  opacity: 0;
+  animation: art-return-reveal var(--art-return-ms) ease forwards;
+}
+
+@keyframes art-return-reveal {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

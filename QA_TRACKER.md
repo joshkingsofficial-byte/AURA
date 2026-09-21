@@ -46,6 +46,24 @@ evolved) is **Closed**, not silently deleted and not left open forever.
 
 ---
 
+## AURA 001 — approved architecture (Phase 5, The Return)
+
+The Return is architecturally approved as:
+
+```text
+MIRROR
+→ information recedes
+→ final breath
+→ Trace returns into A crossbars
+→ AURA remains briefly
+→ wordmark fades
+→ STILLNESS_OUT
+→ ART emerges through reflection
+→ sovereign ART
+```
+
+---
+
 ## AURA 001 Visual Refinement (unresolved, post-Phase-4)
 
 Design approved architecturally; visual execution is explicitly NOT final.
@@ -60,6 +78,7 @@ in context rather than piecemeal.
 | VR3 | 🟡 Open | Living Atmosphere — current weather glyphs are architectural placeholders only. Final direction should explore AURA visually interpreting the real atmospheric conditions of her installation location rather than displaying conventional weather icons. Future study should include: detailed weather conditions and intensities (clear / partly cloudy / overcast, drizzle / rain / heavy rain, thunderstorms, fog / mist, snow / sleet), wind direction/intensity, day/night distinction, sunrise/sunset relationship, actual lunar phase, moon illumination (crescent / quarter / gibbous / full), atmospheric interaction between cloud/weather and moon where appropriate, and restrained transitions as real conditions change. Not to be implemented now. |
 | VR4 | 🟡 Open | Typography — current typography, including the hand-drawn "A U R A" development glyphs, is developmental only and must not be treated as the final AURA 001 typeface or wordmark. Locked concept regardless of final type choice: the horizontal crossbars of the first and final A are the origin/termination points of the AURA Trace — final typography must preserve this behaviour without being constrained to the current development glyphs. |
 | VR5 | 🟡 Open | Physical proportions — do not finalise Mirror spacing/composition against the current laptop viewport. Final visual refinement must use the proportions of the physical AURA 001. |
+| VR6 | 🟡 Open | Return Trace head alignment — during Trace withdrawal, the bright travelling head currently lags slightly behind the retracting base edge. The Return choreography is accepted structurally, but final visual refinement should make the returning light read as one coherent travelling gesture back into the A crossbars. Not to be fixed now. |
 
 **Design constraints (record, do not implement yet):**
 

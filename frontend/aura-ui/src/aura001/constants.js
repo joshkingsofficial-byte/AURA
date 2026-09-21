@@ -32,10 +32,19 @@ export const WORDMARK_LETTER_GAP_PX = 6; // px between letters — open question
 export const WORDMARK_OPACITY = 0.85; // open question #7
 export const WORDMARK_FADE_MS = 500; // open question #7
 
-// ── MIRROR → ART (Trace-out / Stillness / Return) ───────────────────────────
-export const TRACE_LEAVE_MS = 1500; // open question #2 (mirrored direction)
+// ── MIRROR → ART (The Return, Phase 5) ───────────────────────────────────────
+// The Return is withdrawal, not Reveal reversed — see RevealSequence.js.
+// Governing constraint: "The transition has rhythm, but never obstructs
+// intention." Exact timing remains open; this proves ONE configurable
+// development choreography, not separate automatic-absence vs
+// explicit-request timing profiles (that split is future work).
+export const INFO_RECEDE_MS = 400; // each info block's own fade-out duration — open question #2
+export const INFO_CASCADE_OFFSET_MS = 150; // stagger between info blocks so they don't vanish on one frame — open question #2
+export const TRACE_FINAL_BREATH_MS = 900; // one deliberate breath before withdrawal begins — open question #2/#4
+export const TRACE_LEAVE_MS = 1500; // Trace withdrawal travel time — open question #2 (mirrored direction)
+export const WORDMARK_HOLD_MS = 600; // AURA alone, after Trace is gone, before it fades — open question #2/#7
 export const STILLNESS_OUT_MS = 1000; // open question #3 (mirrored direction)
-export const RETURN_MS = 1200; // ART gradually emerges through reflection — open question #2
+export const ART_RETURN_MS = 1200; // ART gradually emerges through reflection — open question #2
 
 // ── Interaction-zone / absence (Phase 7 stub territory) ─────────────────────
 export const ABSENCE_TIMEOUT_MS = 8000; // continuous absence before auto-Return — open question #5
