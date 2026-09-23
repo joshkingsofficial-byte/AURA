@@ -1,0 +1,24 @@
+/* AURA 001 — StartupState styles (Phase 5.5).
+   Same fade-in-forwards / fade-out-forwards pattern as AuraTrace's wordmark
+   classes, kept local to this component since it owns its own two-step
+   sequence (see StartupState.js file header). */
+
+.startup-wordmark-fade-in {
+  opacity: 0;
+  animation: startup-wordmark-in var(--startup-wordmark-fade-ms) ease forwards;
+}
+
+.startup-wordmark-fade-out {
+  opacity: var(--wordmark-opacity);
+  animation: startup-wordmark-out var(--startup-to-art-ms) ease forwards;
+}
+
+@keyframes startup-wordmark-in {
+  from { opacity: 0; }
+  to   { opacity: var(--wordmark-opacity); }
+}
+
+@keyframes startup-wordmark-out {
+  from { opacity: var(--wordmark-opacity); }
+  to   { opacity: 0; }
+}

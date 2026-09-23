@@ -9,6 +9,7 @@
 // Presence concept (ART → Reveal → Stillness → Trace → Mirror → Return → ART).
 
 export const AURA001_STATES = Object.freeze({
+  STARTUP: 'STARTUP',
   ART: 'ART',
   REVEALING: 'REVEALING',
   STILLNESS_IN: 'STILLNESS_IN',
@@ -24,6 +25,7 @@ export const AURA001_STATES = Object.freeze({
 // "don't interrupt a transition already in progress") is behavior to be
 // implemented in later phases, not encoded in this table.
 export const AURA001_TRANSITIONS = Object.freeze({
+  [AURA001_STATES.STARTUP]: [AURA001_STATES.ART],
   [AURA001_STATES.ART]: [AURA001_STATES.REVEALING],
   [AURA001_STATES.REVEALING]: [AURA001_STATES.STILLNESS_IN],
   [AURA001_STATES.STILLNESS_IN]: [AURA001_STATES.TRACE_ENTERING],
@@ -37,6 +39,7 @@ export const AURA001_TRANSITIONS = Object.freeze({
 // States during which a state-changing voice intent (mirror/art) must be
 // ignored until the in-progress transition completes.
 export const AURA001_TRANSITIONAL_STATES = Object.freeze([
+  AURA001_STATES.STARTUP,
   AURA001_STATES.REVEALING,
   AURA001_STATES.STILLNESS_IN,
   AURA001_STATES.TRACE_ENTERING,
@@ -52,4 +55,7 @@ export const AURA001_STABLE_STATES = Object.freeze([
   AURA001_STATES.MIRROR,
 ]);
 
-export const AURA001_DEFAULT_STATE = AURA001_STATES.ART;
+// Phase 5.5: the true boot sequence is POWER/APPLICATION START -> STARTUP ->
+// ART, not a direct start in ART. STARTUP is transitional and one-time —
+// once it completes, ART is where the piece actually rests.
+export const AURA001_DEFAULT_STATE = AURA001_STATES.STARTUP;

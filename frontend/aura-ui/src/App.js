@@ -7,8 +7,8 @@ import WidgetOverlay from "./components/WidgetOverlay";
 import VisionOverlay from "./components/VisionOverlay";
 import { APPS } from "./components/AppGrid";
 import { useRealtimeVoice } from "./hooks/useRealtimeVoice";
-import ArtState from "./aura001/ArtState"; // AURA 001 Phase 1 — dev-only preview, see gate below
-import RevealSequence from "./aura001/RevealSequence"; // AURA 001 Phase 2 — dev-only preview, see gate below
+import ArtState from "./aura001/ArtState"; // dev-only shortcut, see gate below
+import RevealSequence from "./aura001/RevealSequence"; // AURA 001 — now the default runtime, see gate below
 
 const WS_URL = "ws://localhost:8765";
 
@@ -361,23 +361,30 @@ export default function App() {
   });
   sessionStatusRef.current = sessionStatus;
 
-  // ── AURA 001 dev-only previews (Phase 1 + Phase 2) ───────────────────────
-  // Not part of the production screen flow and not the default — reachable
-  // only in a development build via an explicit opt-in query param
-  // (?aura001=art or ?aura001=reveal), never through any UI control. This
-  // is a true early return (after all hooks above have run), so none of
-  // V0's idle/home/app screens, WidgetOverlay, or VisionOverlay ever mount
-  // alongside either preview.
-  if (
-    process.env.NODE_ENV === "development" &&
-    new URLSearchParams(window.location.search).get("aura001") === "art"
-  ) {
+  // ── AURA 001 runtime (Phase 5.5 revision — now the default) ──────────────
+  // AURA 001 is the active runtime for this branch (aura-001-simplification),
+  // in every environment, production included: opening the app root boots
+  // straight into RevealSequence (STARTUP -> ART -> ... -> ART), no query
+  // parameter, no sessionStorage, no NODE_ENV check gating this branch. V0's
+  // entire render tree below (WidgetOverlay/AuraOrb, IdleScreen, HomePage,
+  // AppView, VisionOverlay, DevButton) is preserved, not deleted, but is now
+  // unreachable except through the explicit dev-only escape hatch
+  // (?v0=1) kept for comparison/testing until V0 is removed in a later,
+  // controlled phase. This is still a true early return (after all hooks
+  // above have run), so none of V0's screens or the orb can mount alongside
+  // AURA 001, in dev or in a production build.
+  const params = new URLSearchParams(window.location.search);
+  const isDev = process.env.NODE_ENV === "development";
+
+  // Dev-only shortcut: a bare ArtState preview, no STARTUP/Reveal/Trace.
+  if (isDev && params.get("aura001") === "art") {
     return <ArtState />;
   }
-  if (
-    process.env.NODE_ENV === "development" &&
-    new URLSearchParams(window.location.search).get("aura001") === "reveal"
-  ) {
+
+  // Dev-only escape hatch to the legacy V0 runtime, for comparison/testing
+  // only — statically eliminated in production (isDev folds to false).
+  const showLegacyV0 = isDev && params.get("v0") === "1";
+  if (!showLegacyV0) {
     return <RevealSequence />;
   }
 

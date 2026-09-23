@@ -4,8 +4,11 @@ import ArtState from './ArtState';
 import MirrorSurfacePlaceholder from './MirrorSurfacePlaceholder';
 import AuraTrace from './AuraTrace';
 import MirrorState from './MirrorState';
-import { AURA001_STATES } from './states';
+import StartupState from './StartupState';
+import { AURA001_STATES, AURA001_DEFAULT_STATE } from './states';
 import {
+  STARTUP_MIN_MS,
+  STARTUP_TO_ART_MS,
   REVEAL_MS,
   STILLNESS_IN_MS,
   TRACE_ENTER_MS,
@@ -16,21 +19,35 @@ import {
   ART_RETURN_MS,
 } from './constants';
 
-// AURA 001 — development sequence controller (Phase 2 + 3 + 4 + 5).
+// AURA 001 — sequence controller (Phase 2 + 3 + 4 + 5 + 5.5).
 //
 // Drives the complete cycle:
-//   ART -> REVEALING -> STILLNESS_IN -> TRACE_ENTERING -> MIRROR
+//   STARTUP -> ART -> REVEALING -> STILLNESS_IN -> TRACE_ENTERING -> MIRROR
 //   -> TRACE_LEAVING -> STILLNESS_OUT -> ART_RETURNING -> ART
-// using the Phase 0 state machine and named constants. Dev-only: mounted
-// exclusively behind the ?aura001=reveal gate in App.js.
+// using the Phase 0 state machine and named constants. Phase 5.5 revision:
+// this is now the DEFAULT runtime mounted unconditionally by App.js — no
+// query parameter, no sessionStorage, no NODE_ENV check — in every
+// environment including production. (?aura001=art remains a dev-only
+// shortcut straight to a bare ArtState preview, bypassing this component
+// entirely; that's unrelated to this file mounting.)
 //
-// Dev trigger (Phase 5): the SAME click-anywhere affordance now drives
-// both directions — clicking while ART starts the entry sequence,
-// clicking while MIRROR starts The Return. Any other state (mid-
-// transition) is a no-op. This is deliberately the smallest possible
-// development trigger for Return: no new control, no visible affordance,
-// reusing the exact convention already established for entry, gated the
-// same way (only reachable via ?aura001=reveal in a development build).
+// Phase 5.5 — Cold Start: STARTUP is the true initial state (see
+// AURA001_DEFAULT_STATE in states.js), matching the real boot sequence
+// POWER/APPLICATION START -> STARTUP -> ART. It advances to ART
+// automatically after STARTUP_MIN_MS — no click, no visitor interaction,
+// no network/API dependency of any kind (see StartupState.js). Opening the
+// app root now plays the complete cold start on its own: STARTUP -> ART ->
+// Reveal -> Stillness -> Trace -> Mirror -> Return -> ART, all from one
+// page load, with no dev trigger needed at all.
+//
+// Interaction (Phase 5): the SAME click-anywhere affordance drives both
+// directions — clicking while ART starts the entry sequence, clicking
+// while MIRROR starts The Return. Any other state (mid-transition) is a
+// no-op. This is deliberately the smallest possible trigger for Return: no
+// new control, no visible affordance, reusing the exact convention already
+// established for entry. Click is a development-era stand-in for the real
+// installation's eventual sensor/gesture/voice trigger — not itself part
+// of the approved interaction design.
 //
 // State machine choice, as asked to explain: TRACE_LEAVING is used as ONE
 // global state for the entire Return withdrawal. Final breath, Trace
@@ -61,7 +78,7 @@ import {
 // completes before another state-changing intention can occur.
 
 export default function RevealSequence() {
-  const [state, setState] = useState(AURA001_STATES.ART);
+  const [state, setState] = useState(AURA001_DEFAULT_STATE);
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -74,6 +91,14 @@ export default function RevealSequence() {
     const id = setTimeout(fn, ms);
     timersRef.current.push(id);
     return id;
+  }, []);
+
+  // Cold Start: STARTUP -> ART happens automatically, once, on mount — not
+  // in response to a click. Runs unconditionally since STARTUP is only ever
+  // the initial state (see AURA001_DEFAULT_STATE).
+  useEffect(() => {
+    addTimer(() => setState(AURA001_STATES.ART), STARTUP_MIN_MS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const triggerEnter = useCallback(() => {
@@ -140,9 +165,10 @@ export default function RevealSequence() {
 
   useEffect(() => () => timersRef.current.forEach(clearTimeout), []);
 
+  const inStartup = state === AURA001_STATES.STARTUP;
   const inArt = state === AURA001_STATES.ART;
   const inArtReturning = state === AURA001_STATES.ART_RETURNING;
-  const showArtLayer = inArt || state === AURA001_STATES.REVEALING || inArtReturning;
+  const showArtLayer = inStartup || inArt || state === AURA001_STATES.REVEALING || inArtReturning;
   const artOpacity = inArt || inArtReturning ? 1 : 0;
 
   const showTrace =
@@ -162,15 +188,29 @@ export default function RevealSequence() {
       <MirrorSurfacePlaceholder />
 
       {/* ART / REVEALING: existing opacity-transition fade-out, unchanged
-          from Phase 2. ART_RETURNING: a fresh mount using a CSS keyframe
-          (RevealSequence.css) rather than a transition, since ArtState is
-          genuinely absent throughout STILLNESS_OUT — a transition can't
-          animate a property change on an element that doesn't exist yet. */}
+          from Phase 2. ART_RETURNING and STARTUP: a fresh mount using the
+          same CSS keyframe (RevealSequence.css) rather than a transition,
+          since ArtState is genuinely absent beforehand in both cases — a
+          transition can't animate a property change on an element that
+          doesn't exist yet. STARTUP additionally delays that fade-in via
+          --art-return-delay-ms so it lands on STARTUP's final crossfade
+          window, in sync with StartupState's own wordmark fade-out below. */}
       {showArtLayer && (
         inArtReturning ? (
           <div
             className="art-return-fade-in"
             style={{ position: 'fixed', inset: 0, pointerEvents: 'none', '--art-return-ms': `${ART_RETURN_MS}ms` }}
+          >
+            <ArtState />
+          </div>
+        ) : inStartup ? (
+          <div
+            className="art-return-fade-in"
+            style={{
+              position: 'fixed', inset: 0, pointerEvents: 'none',
+              '--art-return-ms': `${STARTUP_TO_ART_MS}ms`,
+              '--art-return-delay-ms': `${STARTUP_MIN_MS - STARTUP_TO_ART_MS}ms`,
+            }}
           >
             <ArtState />
           </div>
@@ -188,6 +228,8 @@ export default function RevealSequence() {
           </div>
         )
       )}
+
+      {inStartup && <StartupState />}
 
       {showTrace && <AuraTrace phase={tracePhase} onLeavingComplete={handleTraceLeavingComplete} />}
       {showMirrorInfo && <MirrorState receding={infoReceding} />}

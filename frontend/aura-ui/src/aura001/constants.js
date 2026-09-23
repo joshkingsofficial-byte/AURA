@@ -6,6 +6,16 @@
 // remain TBD through physical/visual/gallery testing. Nothing here should be
 // treated as final without that testing.
 
+// ── Cold Start (Phase 5.5) ───────────────────────────────────────────────────
+// POWER/APPLICATION START -> STARTUP -> ART. STARTUP shows only a near-black
+// background (MirrorSurfacePlaceholder, already always-mounted) and the
+// fading "A U R A" wordmark — no Trace, no clock/weather/music, no loading
+// indicator of any kind. It is NOT gated on any network/API readiness; these
+// constants are a fixed dev-prototype stand-in for "local resources ready."
+export const STARTUP_WORDMARK_FADE_MS = 800; // wordmark fades in at boot — open question #7
+export const STARTUP_MIN_MS = 2000; // total floor duration in STARTUP before ART, including the crossfade below — open question #2
+export const STARTUP_TO_ART_MS = 1000; // final crossfade from startup surface to sovereign ART — open question #2
+
 // ── Reveal / Stillness / Trace-in (ART → MIRROR) ────────────────────────────
 export const REVEAL_MS = 1200; // ART recedes, reflection emerges — open question #2
 export const STILLNESS_IN_MS = 1000; // pure reflection pause — open question #3 (spec's ~1s starting value)
