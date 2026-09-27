@@ -3,6 +3,8 @@
 **Date:** 2026-09-10
 **Purpose of this document:** A frozen record of what AURA was before the pivot to a simplified, gallery-first Version 1 hardware product. This is the baseline the V1 simplification branches off from — if V1 strips something out, it lived here first.
 
+> **2026-09-27 note:** This file remains an unaltered historical snapshot of V0 below — including its Raspberry Pi 5 / Dell S2425HSM hardware assumption, which was V0's intended target at the time and is preserved as historical record, not corrected here. It does not reflect AURA 001's current status. AURA 001 now runs independently on a Raspberry Pi 4, deployed from the approved `aura-001-simplification` branch — see `MASTER_WORK_FILE.md` for the live current-position record.
+
 ---
 
 ## What AURA is, as of this snapshot
