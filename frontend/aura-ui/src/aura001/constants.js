@@ -66,12 +66,42 @@ export const ABSENCE_TIMEOUT_MS = 8000; // continuous absence before auto-Return
 // swap providers without touching call sites.
 export const NOW_PLAYING_SOURCE = 'mock'; // 'mock' | future: 'spotify-connect' | 'airplay' | 'webhook' | 'none'
 
-// ── ART (Phase 1) ────────────────────────────────────────────────────────────
+// ── ART (Phase 1; ART_STUDIES registry added for Physical Study 01) ─────────
 // Hosted Programme rotation is explicitly out of scope (open question #1) —
-// one local test asset only, for now. The asset itself is an original,
-// abstract placeholder created for development — not real/final artwork.
-export const ART_TEST_ASSET_PATH = '/aura001-dev/dev-test-artwork.svg';
-export const ART_TEST_ASSET_TYPE = 'image'; // 'image' | 'video'
+// ArtState only ever shows exactly one study, chosen here in source. No
+// runtime picker, no rotation, no visitor-facing control of any kind.
+// ACTIVE_ART_STUDY is the single line that decides which one — every
+// ArtState call site already resolves its default from this same registry,
+// so they can never drift out of sync with each other.
+export const ART_STUDIES = {
+  EMANATION: {
+    path: '/aura001-dev/dev-test-artwork.svg',
+    type: 'image', // 'image' | 'video'
+    fit: 'cover',
+    label: 'ART STUDY 001 — EMANATION',
+  },
+  LONELY: {
+    path: '/aura001-dev/lonely.jpg',
+    type: 'image',
+    fit: 'contain',
+    label: 'ART STUDY 002 — LONELY',
+    artist: 'Minded',
+    location: 'Montenegro',
+    year: 2025,
+    medium: 'Photograph',
+  },
+  CAR_LIVE: {
+    path: '/aura001-dev/car-live-study.mp4',
+    type: 'video',
+    fit: 'contain', // native landscape framing, no display-level crop beyond the approved derivative
+    label: 'ART STUDY 003B — CAR / LIVE',
+    artist: 'Minded',
+    location: 'Haywards Heath / Ardingly',
+    year: 2023,
+    medium: 'Live Photograph / Moving-image study',
+  },
+};
+export const ACTIVE_ART_STUDY = 'CAR_LIVE'; // change this one line to switch studies — temporarily CAR_LIVE for testing
 
 // ── MIRROR composition (Phase 4) ─────────────────────────────────────────────
 // Breathing room for time/music/weather beyond the Trace's own edge inset,

@@ -148,6 +148,13 @@ Frank Ocean" appeared correctly. **Living Atmosphere did not appear in the
 lower-right territory.** Recorded as a functional discrepancy requiring
 investigation — not redesigned in this pass. See QA_TRACKER.md A4.
 
+**2026-09-27 update:** during Mac/browser testing of ART STUDY 003B
+(CAR_LIVE), Living Atmosphere rendered correctly in MIRROR at the
+lower-right (18° / CLEAR). Not treating PR001-07 as fixed — the
+discrepancy appears environment-specific: present on Mac, previously
+absent on the Raspberry Pi physical runtime. Root cause between the two
+environments remains uninvestigated.
+
 ### PR001-08 — Information Scale / Hierarchy — *CHANGE/INVESTIGATE + DEFER UNTIL REFLECTIVE MATERIAL*
 
 At 55" physical scale the functional typography remains intentionally
@@ -195,6 +202,44 @@ in which ownership of the surface changes.
 is recorded here only. It has not been added to `PRESENCE_BIBLE.md` and
 should not be treated as governing language until a dedicated Presence
 pass confirms and promotes it.
+
+---
+
+## ART Study Candidates — Status (2026-09-30)
+
+`ART_STUDIES` (LONELY, CAR_LIVE, alongside the original EMANATION) is now
+implemented as a source-level registry consumed by `ArtState.js` — see
+the code itself for the mechanism. This section records the *artistic*
+status of the two new candidates, which the implementation work does not
+settle on its own:
+
+- **LONELY's `contain` presentation remains under physical study.**
+  Implementing the `fit` field and verifying it renders correctly on a
+  laptop screen is not the same as judging whether `contain` is the right
+  artistic treatment — that judgement is explicitly deferred to physical
+  display, per the same reasoning already established throughout Physical
+  Review 001 (laptop screenshots have repeatedly been overridden by
+  physical observation in this project).
+- **CAR_LIVE's `contain` presentation remains under physical study**, for
+  the same reason.
+- **CAR_LIVE's current immediate looping is technical test behaviour
+  only.** The derivative's native `loop` attribute (instant restart on
+  end) exists to prove the moving-image render path works through
+  `ArtState` — it is not an artistic decision about how CAR_LIVE should
+  actually loop.
+- **The intended long-stillness / unexpected-motion-arrival behaviour is
+  not yet implemented.** ART STUDY 003B's own artistic direction (car
+  exits → deliberate hold on the empty frame → surprise return, not an
+  instant reset — see the loop-question discussion during the trim/derivative
+  work) has not been built. This commit captures render-path verification
+  only, not the intended final behaviour.
+- **The measured ~2-3% derivative luma shift is an open physical-review
+  observation, not corrected.** `ffmpeg signalstats` showed the CAR_LIVE
+  derivative reading consistently brighter than the source MOV at matching
+  timestamps during creation; visually the difference wasn't obvious
+  side-by-side on a laptop. Tracked for resolution in QA_TRACKER.md (A8) —
+  judgement on whether a correction pass is warranted waits for physical
+  display, not a laptop comparison.
 
 ---
 

@@ -1,5 +1,7 @@
 import React from 'react';
-import { ART_TEST_ASSET_PATH, ART_TEST_ASSET_TYPE } from './constants';
+import { ART_STUDIES, ACTIVE_ART_STUDY } from './constants';
+
+const activeStudy = ART_STUDIES[ACTIVE_ART_STUDY];
 
 // AURA 001 — ArtState (Phase 1).
 //
@@ -17,8 +19,9 @@ import { ART_TEST_ASSET_PATH, ART_TEST_ASSET_TYPE } from './constants';
 // artist metadata (Decision #8 — Hosted Programme mechanics — remains open).
 
 export default function ArtState({
-  assetPath = ART_TEST_ASSET_PATH,
-  assetType = ART_TEST_ASSET_TYPE,
+  assetPath = activeStudy.path,
+  assetType = activeStudy.type,
+  assetFit = activeStudy.fit || 'cover',
 }) {
   return (
     <div
@@ -36,14 +39,14 @@ export default function ArtState({
           loop
           muted
           playsInline
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          style={{ width: '100%', height: '100%', objectFit: assetFit }}
         />
       )}
       {assetType === 'image' && assetPath && (
         <img
           src={assetPath}
           alt=""
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          style={{ width: '100%', height: '100%', objectFit: assetFit }}
         />
       )}
     </div>
