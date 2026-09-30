@@ -268,6 +268,42 @@ and `~/Downloads/lonely.jpg`.
 
 ---
 
+## Static Art Physical Study (2026-09-30)
+
+**Purpose:** isolate static artwork behaviour from moving-image behaviour
+and evaluate how 16:9 paintings inhabit AURA at physical scale — CAR_LIVE
+testing is paused, not removed, while this runs.
+
+Three temporary candidates added to `ART_STUDIES`, sourced from the
+J. Paul Getty Museum's open-content collection (public domain; rights
+statement "No Copyright — United States" embedded in each file's own
+metadata), all 3840×2160 (16:9), copied byte-for-byte with no
+modification — inspection found no GPS/device metadata and no orientation
+dependency requiring intervention:
+
+- **PAINTING_VENICE** (ART STUDY 004A) — *Regatta on the Grand Canal in
+  Honor of Frederick IV, King of Denmark*. Currently `ACTIVE_ART_STUDY`.
+- **PAINTING_SEA** (ART STUDY 004B) — *Van Tromp, going about to please
+  his Masters, Ships a Sea, getting a Good Wetting*, J.M.W. Turner, 1844.
+- **PAINTING_GARDEN** (ART STUDY 004C) — *Dance before a Fountain*,
+  Nicolas Lancret, c. 1724.
+
+No artist/title/date metadata was added to the `ART_STUDIES` registry
+entries themselves yet — the source files carry this in their own
+embedded metadata, but nothing is invented here beyond what was supplied.
+Test order for physical viewing: VENICE → SEA → GARDEN, switching
+`ACTIVE_ART_STUDY` one entry at a time, same source-only mechanism as
+every other study — no slideshow, no rotation, no visitor-facing
+selector, no transitions between paintings.
+
+**No artistic judgement is final until seen on the physical
+installation** — same standing rule as every other study in this file.
+`fit: 'contain'` was chosen because both the artwork and the display are
+16:9, so it's expected to fill the surface without material cropping, but
+that expectation itself is unverified until viewed physically.
+
+---
+
 ## Operational / Infrastructure Findings
 
 The Raspberry Pi now runs AURA independently. AURA has been built natively

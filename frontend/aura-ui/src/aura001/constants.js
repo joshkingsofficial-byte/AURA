@@ -100,8 +100,30 @@ export const ART_STUDIES = {
     year: 2023,
     medium: 'Live Photograph / Moving-image study',
   },
+  // Static Art Physical Study — temporary candidates, isolating static-artwork
+  // behaviour from moving-image behaviour. No artist/title metadata supplied
+  // yet beyond what's already embedded in the source files (see
+  // MASTER_WORK_FILE.md) — not inventing any here.
+  PAINTING_VENICE: {
+    path: '/aura001-dev/painting-venice-study.jpg',
+    type: 'image',
+    fit: 'contain',
+    label: 'ART STUDY 004A — VENICE',
+  },
+  PAINTING_SEA: {
+    path: '/aura001-dev/painting-sea-study.jpg',
+    type: 'image',
+    fit: 'contain',
+    label: 'ART STUDY 004B — SEA',
+  },
+  PAINTING_GARDEN: {
+    path: '/aura001-dev/painting-garden-study.jpg',
+    type: 'image',
+    fit: 'contain',
+    label: 'ART STUDY 004C — GARDEN',
+  },
 };
-export const ACTIVE_ART_STUDY = 'CAR_LIVE'; // change this one line to switch studies — temporarily CAR_LIVE for testing
+export const ACTIVE_ART_STUDY = 'PAINTING_VENICE'; // change this one line to switch studies — temporarily PAINTING_VENICE for testing
 
 // ── MIRROR composition (Phase 4) ─────────────────────────────────────────────
 // Breathing room for time/music/weather beyond the Trace's own edge inset,
