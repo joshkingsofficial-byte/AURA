@@ -107,23 +107,30 @@ export const ART_STUDIES = {
   PAINTING_VENICE: {
     path: '/aura001-dev/painting-venice-study.jpg',
     type: 'image',
-    fit: 'contain',
+    fit: 'cover', // full-surface test — native 16:9 asset on a 16:9-ish display
     label: 'ART STUDY 004A — VENICE',
   },
   PAINTING_SEA: {
     path: '/aura001-dev/painting-sea-study.jpg',
     type: 'image',
-    fit: 'contain',
+    fit: 'cover',
     label: 'ART STUDY 004B — SEA',
   },
   PAINTING_GARDEN: {
     path: '/aura001-dev/painting-garden-study.jpg',
     type: 'image',
-    fit: 'contain',
+    fit: 'cover',
     label: 'ART STUDY 004C — GARDEN',
   },
 };
 export const ACTIVE_ART_STUDY = 'PAINTING_VENICE'; // change this one line to switch studies — temporarily PAINTING_VENICE for testing
+
+// ── Static Art Schedule Study (experimental) ─────────────────────────────────
+// Set to an ART_STUDIES key (e.g. 'PAINTING_SEA') to force that study
+// regardless of the local-time schedule — development/testing only, not
+// part of the study's actual behaviour. null = normal scheduled behaviour.
+// See artSchedule.js and MASTER_WORK_FILE.md "Static Art Schedule Study".
+export const DEV_ART_STUDY_OVERRIDE = null;
 
 // ── MIRROR composition (Phase 4) ─────────────────────────────────────────────
 // Breathing room for time/music/weather beyond the Trace's own edge inset,

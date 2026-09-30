@@ -17,12 +17,19 @@ const activeStudy = ART_STUDIES[ACTIVE_ART_STUDY];
 // one code path without guessing from a URL. Only what one development
 // asset needs is implemented here — no rotation, no next/previous, no
 // artist metadata (Decision #8 — Hosted Programme mechanics — remains open).
+//
+// `studyKey`: optional. When RevealSequence needs a study other than the
+// fixed ACTIVE_ART_STUDY default (currently: the Static Art Schedule
+// Study — see artSchedule.js), it passes the resolved key here rather
+// than duplicating the registry lookup. Bare `<ArtState />` (the
+// ?aura001=art dev shortcut) is unaffected — it still resolves from
+// ACTIVE_ART_STUDY exactly as before.
 
-export default function ArtState({
-  assetPath = activeStudy.path,
-  assetType = activeStudy.type,
-  assetFit = activeStudy.fit || 'cover',
-}) {
+export default function ArtState({ studyKey, assetPath, assetType, assetFit }) {
+  const resolved = studyKey ? ART_STUDIES[studyKey] : activeStudy;
+  const path = assetPath !== undefined ? assetPath : resolved.path;
+  const type = assetType !== undefined ? assetType : resolved.type;
+  const fit = assetFit !== undefined ? assetFit : (resolved.fit || 'cover');
   return (
     <div
       style={{
@@ -32,21 +39,21 @@ export default function ArtState({
         overflow: 'hidden',
       }}
     >
-      {assetType === 'video' && assetPath && (
+      {type === 'video' && path && (
         <video
-          src={assetPath}
+          src={path}
           autoPlay
           loop
           muted
           playsInline
-          style={{ width: '100%', height: '100%', objectFit: assetFit }}
+          style={{ width: '100%', height: '100%', objectFit: fit }}
         />
       )}
-      {assetType === 'image' && assetPath && (
+      {type === 'image' && path && (
         <img
-          src={assetPath}
+          src={path}
           alt=""
-          style={{ width: '100%', height: '100%', objectFit: assetFit }}
+          style={{ width: '100%', height: '100%', objectFit: fit }}
         />
       )}
     </div>

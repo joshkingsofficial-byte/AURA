@@ -302,6 +302,106 @@ installation** — same standing rule as every other study in this file.
 16:9, so it's expected to fill the surface without material cropping, but
 that expectation itself is unverified until viewed physically.
 
+**2026-09-30 update:** all three paintings now use `fit: 'cover'` (full-
+surface), not `contain`. Rationale below, under Static Art Schedule Study.
+
+---
+
+## Static Art Schedule Study (2026-09-30)
+
+**Status: implemented in source, not yet committed, pushed, or deployed
+to the Pi — report only, pending review.**
+
+**Purpose.** This is an experimental mechanism for observing how the same
+static artworks read under different real lighting/time conditions on the
+physical installation — it is explicitly **not** final curatorial
+programming. The schedule below (which painting shows at which hour) is a
+development starting point for physical observation, the same standing as
+every timing constant in `constants.js`.
+
+**What changed:**
+
+- All three paintings (`PAINTING_VENICE`, `PAINTING_SEA`,
+  `PAINTING_GARDEN`) switched from `fit: 'contain'` to `fit: 'cover'` in
+  `constants.js` — full-surface presentation rather than letterboxed. The
+  three source JPEGs themselves are untouched; only the `objectFit` style
+  `ArtState` applies to them changed. LONELY, CAR_LIVE, and EMANATION are
+  unaffected — still `contain`/native framing as before.
+- A new pure function, `getScheduledStudyKey(date = new Date())` in the
+  new file `frontend/aura-ui/src/aura001/artSchedule.js`, maps the current
+  local hour to one of the three paintings:
+
+  | Local hours | Study |
+  |---|---|
+  | 08:00–11:59 | PAINTING_VENICE |
+  | 12:00–15:59 | PAINTING_SEA |
+  | 16:00–19:59 | PAINTING_GARDEN |
+  | 20:00–07:59 | PAINTING_VENICE |
+
+  Deterministic, local-device-time-only, no network dependency, nothing
+  persisted — a fresh page load always recomputes the correct study from
+  the device clock alone.
+- A source-level-only override, `DEV_ART_STUDY_OVERRIDE` in `constants.js`
+  (default `null`), can force one specific study for development/testing,
+  bypassing the schedule. This is not visitor-facing — there is no
+  runtime picker or UI control, exactly matching the standing rule already
+  established for `ACTIVE_ART_STUDY`.
+- `RevealSequence.js` now owns a `lockedStudyKey` piece of state, resolved
+  once at mount and passed down to every `<ArtState />` render site. It is
+  only ever recomputed at two deliberately safe moments:
+  1. A 60-second poll, applied **only** while idle in `ART` (checked
+     against the live state, not stale closure state).
+  2. Once, at the exact instant `ART_RETURNING` begins (inside
+     `handleTraceLeavingComplete`), so a visitor returning from MIRROR
+     always sees the artwork appropriate for the current time, not
+     whatever was showing before they entered MIRROR.
+
+  Critically, a schedule change can **never** interrupt
+  REVEAL/STILLNESS/TRACE/MIRROR/RETURN — not because of an extra guard
+  written for this feature, but because `ArtState` is already genuinely
+  unmounted for the entire STILLNESS_IN → TRACE_LEAVING span (existing
+  DOM-purity architecture, unrelated to this change). There is nothing on
+  screen for a schedule tick to alter during that whole span.
+
+**Verified this pass:**
+- Mock-time-injection test of the pure `getScheduledStudyKey` logic
+  against all 10 specified boundary timestamps (07:59, 08:00, 11:59,
+  12:00, 15:59, 16:00, 19:59, 20:00, 23:59, 00:00) — all 10 resolved to
+  the expected study.
+- Live browser check of the production build (served locally): at actual
+  local time 17:5x (hour 17, inside the 16:00–19:59 window),
+  `<img>`'s resolved `src` was `painting-garden-study.jpg` with computed
+  `object-fit: cover` — confirms real wiring, not just the isolated
+  function.
+- Full Reveal → Stillness → Trace → MIRROR → Return cycle run end-to-end
+  in-browser: `ArtState`/`<img>` confirmed absent (DOM query returned
+  none) throughout MIRROR, then confirmed present again after Return
+  completed, still resolving the same current-hour study with `cover`
+  still applied — i.e., a full cycle with no schedule boundary crossed
+  mid-cycle leaves the artwork and its framing unchanged, as expected.
+  (A boundary actually being *crossed* mid-MIRROR was not separately
+  exercised with real wall-clock time in this pass, since architecture —
+  not timing luck — is what guarantees no interruption: see above.)
+- `npm run build`: succeeds, only the two pre-existing ESLint warnings
+  (`WidgetOverlay.js` unused `isActive`, `useRealtimeVoice.js` missing
+  `setOrb` dep) — no new warnings introduced.
+
+**Not yet verified:** an actual schedule-boundary crossing occurring
+*during* a live MIRROR session on the physical installation (the
+architectural guarantee above was verified by code structure and by
+unmount/remount inspection, not by waiting for a real clock boundary
+mid-session). Final judgement on whether this schedule is the right cadence,
+or whether daily painting rotation is even artistically desirable at all,
+depends on physical observation on the Pi — same standing rule as every
+other study in this file.
+
+**Explicitly not done in this pass, per instruction:** no commit, no push,
+no deploy to the Pi. No change to `PRESENCE_BIBLE.md` — the "experimental,
+not final curatorial programming" framing above stays recorded here only,
+not promoted into governing language. No change to LONELY, CAR_LIVE, or
+any JPEG/MP4 byte content — only `constants.js`, the new `artSchedule.js`,
+`ArtState.js`, and `RevealSequence.js` changed.
+
 ---
 
 ## Operational / Infrastructure Findings

@@ -5,6 +5,7 @@ import MirrorSurfacePlaceholder from './MirrorSurfacePlaceholder';
 import AuraTrace from './AuraTrace';
 import MirrorState from './MirrorState';
 import StartupState from './StartupState';
+import { getScheduledStudyKey } from './artSchedule';
 import { AURA001_STATES, AURA001_DEFAULT_STATE } from './states';
 import {
   STARTUP_MIN_MS,
@@ -86,6 +87,14 @@ export default function RevealSequence() {
   const [infoReceding, setInfoReceding] = useState(false);
   const [traceLeavingActive, setTraceLeavingActive] = useState(false);
 
+  // Static Art Schedule Study: which ART_STUDIES key is actually displayed.
+  // Locked (not read live by ArtState) so a schedule-boundary crossing mid-
+  // transition can never change what's on screen — it's only ever updated
+  // from the two safe-moment call sites below (idle ART polling, and once
+  // at the start of ART_RETURNING), never during REVEAL/STILLNESS/TRACE/
+  // MIRROR. See artSchedule.js.
+  const [lockedStudyKey, setLockedStudyKey] = useState(() => getScheduledStudyKey());
+
   const timersRef = useRef([]);
   const addTimer = useCallback((fn, ms) => {
     const id = setTimeout(fn, ms);
@@ -99,6 +108,19 @@ export default function RevealSequence() {
   useEffect(() => {
     addTimer(() => setState(AURA001_STATES.ART), STARTUP_MIN_MS);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Static Art Schedule Study: poll once a minute for a schedule-boundary
+  // crossing, but only ever apply it while idle in ART — never mid-
+  // transition. Checking stateRef (not state) means this effect's own
+  // interval doesn't need to be torn down/recreated every state change.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (stateRef.current !== AURA001_STATES.ART) return;
+      const next = getScheduledStudyKey();
+      setLockedStudyKey((prev) => (prev === next ? prev : next));
+    }, 60000);
+    return () => clearInterval(id);
   }, []);
 
   const triggerEnter = useCallback(() => {
@@ -149,6 +171,10 @@ export default function RevealSequence() {
     setState(AURA001_STATES.STILLNESS_OUT);
 
     addTimer(() => {
+      // Re-lock for whatever time it is NOW, right as ART_RETURNING begins —
+      // "When AURA next returns to ART, it should display the artwork
+      // appropriate for the current local time" — before ArtState re-mounts.
+      setLockedStudyKey(getScheduledStudyKey());
       setState(AURA001_STATES.ART_RETURNING);
 
       addTimer(() => {
@@ -201,7 +227,7 @@ export default function RevealSequence() {
             className="art-return-fade-in"
             style={{ position: 'fixed', inset: 0, pointerEvents: 'none', '--art-return-ms': `${ART_RETURN_MS}ms` }}
           >
-            <ArtState />
+            <ArtState studyKey={lockedStudyKey} />
           </div>
         ) : inStartup ? (
           <div
@@ -212,7 +238,7 @@ export default function RevealSequence() {
               '--art-return-delay-ms': `${STARTUP_MIN_MS - STARTUP_TO_ART_MS}ms`,
             }}
           >
-            <ArtState />
+            <ArtState studyKey={lockedStudyKey} />
           </div>
         ) : (
           <div
@@ -224,7 +250,7 @@ export default function RevealSequence() {
               pointerEvents: 'none',
             }}
           >
-            <ArtState />
+            <ArtState studyKey={lockedStudyKey} />
           </div>
         )
       )}
