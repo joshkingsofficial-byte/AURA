@@ -241,14 +241,30 @@ settle on its own:
   judgement on whether a correction pass is warranted waits for physical
   display, not a laptop comparison.
 
-**2026-09-30 update:** the deployment copy of `lonely.jpg` has been
-sanitized for privacy — original camera EXIF (including GPS coordinates,
-device make/model, capture date) and embedded XMP metadata were stripped
-via a surgical marker-level rewrite (no recompression; the compressed
-image scan data is byte-identical before and after). The colour profile
-(Display P3 ICC) was deliberately preserved. The original master remains
-untouched outside the repo at `~/Downloads/lonely-original.heic` and
-`~/Downloads/lonely.jpg`.
+**2026-09-30 update (commit 4291509):** the deployment copy of `lonely.jpg`
+was sanitized for privacy — original camera EXIF (including GPS
+coordinates, device make/model, capture date) and embedded XMP metadata
+were stripped via a marker-level rewrite. **This introduced a bug**,
+caught by Pi-side verification before it reached any running display: the
+stored pixels were physically landscape (4032×3024), relying on an EXIF
+`Orientation = 6` tag to display correctly as portrait — stripping that
+tag without baking the rotation into the pixel data itself left the file
+displaying sideways.
+
+**2026-09-30 correction (this commit):** the deployment copy was rebuilt
+from the pre-sanitization backup. The rotation was baked into the pixel
+data directly via `jpegtran -rotate 90 -perfect` (a lossless block-level
+transform — `-perfect` fails outright if perfect losslessness isn't
+achievable for the image's dimensions, and it succeeded; verified
+separately by confirming the resulting entropy-coded scan data is
+byte-identical whether or not the colour profile is re-attached
+afterward). The file now stores pixels natively as 3024×4032 portrait, so
+it displays correctly with **no EXIF orientation dependency at all** —
+not just none present, none needed. EXIF, GPS, XMP, and the processing-tool
+comment remain stripped. The Display P3 ICC colour profile was re-attached
+via a direct byte-level splice (no re-encoding). The original master
+remains untouched outside the repo at `~/Downloads/lonely-original.heic`
+and `~/Downloads/lonely.jpg`.
 
 ---
 
