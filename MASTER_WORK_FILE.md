@@ -241,6 +241,15 @@ settle on its own:
   judgement on whether a correction pass is warranted waits for physical
   display, not a laptop comparison.
 
+**2026-09-30 update:** the deployment copy of `lonely.jpg` has been
+sanitized for privacy — original camera EXIF (including GPS coordinates,
+device make/model, capture date) and embedded XMP metadata were stripped
+via a surgical marker-level rewrite (no recompression; the compressed
+image scan data is byte-identical before and after). The colour profile
+(Display P3 ICC) was deliberately preserved. The original master remains
+untouched outside the repo at `~/Downloads/lonely-original.heic` and
+`~/Downloads/lonely.jpg`.
+
 ---
 
 ## Operational / Infrastructure Findings
