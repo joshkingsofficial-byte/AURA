@@ -442,9 +442,63 @@ own time windows.
 
 **Must be returned to `null` before normal scheduled operation** — it is
 a technician tool, left active it would silently defeat the schedule on
-whatever build it ships in. No visitor-facing control, no URL parameter,
-no on-screen menu was added — source editing only, per instruction. Not
-promoted into `PRESENCE_BIBLE.md`.
+whatever build it ships in. No visitor-facing control, no on-screen menu
+was added — source editing only, per instruction. Not promoted into
+`PRESENCE_BIBLE.md`.
+
+**2026-10-03 update — `?technicianArt=` URL override added.** With AURA
+now physically running on the AURA Dell (confirmed: scheduled switching
+works, VENICE displays correctly, Living Atmosphere now appears
+correctly, Trace reads materially better on the Dell than on the 55" LG
+OLED, SEA previously stood out as a particularly good fit for the Dell),
+editing source and rebuilding for every framing comparison was too slow
+for physical review. `artSchedule.js`'s `getScheduledStudyKey()` now also
+accepts a `?technicianArt=<ART_STUDIES key>` URL query parameter, in this
+precedence order:
+
+1. `DEV_ART_STUDY_OVERRIDE` (source-level, if non-null)
+2. `?technicianArt=` (URL, session-only)
+3. normal local-time schedule
+
+- **Physical-review convenience only** — not a visitor feature. No
+  visible control, no menu, no artwork browser of any kind was added;
+  it's read directly from `window.location.search`, nothing renders
+  because of its presence beyond the artwork itself.
+- **URL-controlled but invisible** — there is no UI indicating an
+  override is active. A technician must know the URL to use it.
+- **Non-persistent by construction, not by extra code** — the value is
+  read fresh on every call (initial mount, the 60s idle-ART poll, and the
+  re-lock at ART_RETURNING) directly from the current URL. Nothing is
+  written to localStorage, cookies, IndexedDB, or any config file.
+  Closing the tab or loading the bare URL again means it's gone — there
+  was never anything to clear.
+- **Invalid values are ignored safely** — the parameter is only honoured
+  if it exactly matches an existing `ART_STUDIES` key (checked via
+  `Object.prototype.hasOwnProperty`); anything else (typo, removed key,
+  absent) falls through to the normal schedule without throwing.
+- **Visitors still have no authority to browse or change hosted art** —
+  this is a URL a technician types deliberately on reference hardware
+  during installation/framing review, not a feature exposed, hinted at,
+  or reachable through any part of AURA's visitor-facing surface.
+
+**Verified this pass** (dev server, representing the same logic the
+production build ships): `?technicianArt=PAINTING_VENICE` → VENICE;
+`?technicianArt=PAINTING_SEA` → SEA; `?technicianArt=PAINTING_GARDEN` →
+GARDEN; `?technicianArt=LONELY` → LONELY (`contain` fit preserved);
+`?technicianArt=INVALID` → fell through to the current scheduled artwork
+(VENICE, hour 0) with no crash; no parameter at all → current scheduled
+artwork, same result. One full forced cycle
+(`?technicianArt=LONELY`) run end-to-end: Reveal → Stillness → Trace →
+MIRROR (time/date, music, and now-working Living Atmosphere all present
+and unaffected) → Return → LONELY reappeared, still forced, exactly as
+required. Removing the parameter afterward (bare `http://localhost:3000`)
+immediately resumed the normal schedule with no leftover state.
+`npm run build`: succeeds, only the two known pre-existing warnings.
+
+Primary physical review set remains `PAINTING_VENICE`, `PAINTING_SEA`,
+`PAINTING_GARDEN`, `LONELY` — existing registry framing (`fit`, crop,
+scale) deliberately unchanged this pass; all four still need observing
+on the Dell before any framing changes are considered.
 
 ---
 
