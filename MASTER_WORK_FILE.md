@@ -404,6 +404,115 @@ any JPEG/MP4 byte content — only `constants.js`, the new `artSchedule.js`,
 
 ---
 
+## Technician Art Preview Override (2026-10-02)
+
+**Source-level only — a development/physical-review tool, not
+visitor-facing.** Added no new mechanism: `DEV_ART_STUDY_OVERRIDE` in
+`constants.js` (already introduced for the Static Art Schedule Study
+above) already forces any `ART_STUDIES` key regardless of the local-time
+schedule — this pass only documents its valid keys at the source line
+(`EMANATION`, `LONELY`, `CAR_LIVE`, `PAINTING_VENICE`, `PAINTING_SEA`,
+`PAINTING_GARDEN`) and verifies it end-to-end for the four studies under
+current physical review.
+
+**Purpose:** inspect artworks rapidly on reference hardware (the AURA
+Dell) for surface ownership, edge crop, composition loss, fit, position,
+scale, and colour/contrast — without waiting hours between the schedule's
+own time windows.
+
+**Verified this pass**, for each of `PAINTING_VENICE`, `PAINTING_SEA`,
+`PAINTING_GARDEN`, and `LONELY` set as the override:
+- the forced study's correct asset resolved (confirmed via `<img>` `src`,
+  not assumed), with its own registry `fit` applied correctly (`cover`
+  for the three paintings, `contain` for LONELY, unchanged);
+- the override held regardless of actual local time (tested while real
+  time was inside SEA's own window, with VENICE still forced — confirms
+  the override, not clock luck);
+- a full Reveal → Stillness → Trace → MIRROR → Return cycle completed
+  normally with the override active, `ArtState` confirmed absent
+  throughout MIRROR exactly as without an override, and Return correctly
+  resolved back to the *forced* study, not whatever the schedule would
+  have returned;
+- restoring `DEV_ART_STUDY_OVERRIDE` to `null` afterward resumed the
+  ordinary schedule immediately, with no leftover state — a fresh load at
+  real local hour 13 correctly resolved to `PAINTING_SEA` (12:00–16:00
+  window), with no override artifact remaining.
+- `npm run build`: succeeds, only the two known pre-existing ESLint
+  warnings — no new ones.
+
+**Must be returned to `null` before normal scheduled operation** — it is
+a technician tool, left active it would silently defeat the schedule on
+whatever build it ships in. No visitor-facing control, no URL parameter,
+no on-screen menu was added — source editing only, per instruction. Not
+promoted into `PRESENCE_BIBLE.md`.
+
+---
+
+## Living Atmosphere — Pi Root Cause Resolved (2026-10-02)
+
+**Root cause, confirmed via Pi-side read-only diagnosis:** Living
+Atmosphere's source and compiled build were always correct on both Mac
+and Pi, and MIRROR always mounted the weather territory correctly. The
+Pi's kiosk Chromium browser cannot reliably obtain a `navigator.geolocation`
+fix in the installation runtime environment. Because
+`INSTALLATION_LATITUDE`/`INSTALLATION_LONGITUDE` were `null`, the app's
+only path to weather data was that unreliable browser geolocation call —
+so the Open-Meteo fetch was never reached at all on the Pi, and the
+failure was invisible because every error path (`fetch().catch()`, the
+geolocation error callback) silently swallowed its error with an empty
+handler. **Mac success was environment-specific** — Mac's browser
+obtains geolocation reliably; the Pi's kiosk browser does not. This was
+never a Presence/design problem.
+
+**Fix:** `INSTALLATION_LATITUDE`/`INSTALLATION_LONGITUDE` in
+`constants.js` are no longer `null` — AURA's actual installation
+location, Chelmsford, Essex, UK, is now configured explicitly as
+town-level coordinates (51.7356, 0.4798; not an exact address, per
+instruction). Since installation coordinates now take priority in the
+existing `weatherProvider.js` priority order, normal AURA runtime never
+reaches the browser-geolocation branch at all — it remains only as a
+fallback for a developer running without any installation configured,
+now with a finite 8-second timeout so a stalled/denied fix can never
+block anything else in MIRROR. Restrained development-only console
+logging (`[AURA weather] ...`, gated on `NODE_ENV === 'development'`,
+same gate already used by the `?weather=` dev override) was added at the
+three points that previously failed silently — using installation
+coordinates, geolocation fallback failure, Open-Meteo fetch failure —
+so a future regression would be visible in dev tools rather than
+invisible. No visitor-facing error UI was added.
+
+**This confirms a broader principle for this installation:
+installation-specific configuration belongs to the work, not the
+visitor.** AURA should not depend on a visitor's or installation's
+browser/device to correctly infer where it physically is — that is
+authored, deliberate configuration, the same way `ACTIVE_ART_STUDY` and
+`DEV_ART_STUDY_OVERRIDE` are source-level decisions rather than runtime
+guesses. Browser geolocation is not reliable enough to be primary
+gallery runtime behaviour. **This is an infrastructure/runtime
+correction, not a Presence redesign** — Living Atmosphere's visual
+design, MIRROR composition, and weather animation/typography are
+completely unchanged; not promoted into `PRESENCE_BIBLE.md`, though the
+"installation configuration belongs to the work" framing may be worth a
+future dedicated Presence pass if it turns out to generalize beyond
+weather.
+
+**Verified this pass:** Open-Meteo request confirmed firing with the new
+coordinates (`https://api.open-meteo.com/v1/forecast?latitude=51.7356&longitude=0.4798&current_weather=true`,
+HTTP 200); weather resolved and rendered in MIRROR's lower-right
+territory (observed "15° CLOUDY" alongside time/date/music, all
+correctly positioned); full Reveal → MIRROR → Return cycle unaffected;
+ART (VENICE, per the active schedule window) unaffected before and after
+the cycle; `npm run build` succeeds with only the two known pre-existing
+warnings; no console errors observed across the full cycle.
+
+**Still physical-review-pending:** this fix has not yet been observed on
+the Pi/Dell itself — only verified on Mac (dev server + production
+build). Per the standing rule, final confirmation that Living Atmosphere
+now actually appears on the physical installation still requires a Pi
+deploy and physical observation, not just this Mac-side evidence.
+
+---
+
 ## Operational / Infrastructure Findings
 
 The Raspberry Pi now runs AURA independently. AURA has been built natively

@@ -16,6 +16,15 @@ import {
 // "windy" value of its own.
 export const WEATHER_CONDITIONS = ['CLEAR', 'CLOUDY', 'RAIN', 'WIND', 'SNOW', 'FOG'];
 
+// Restrained, development-only diagnostics — never visitor-facing, never
+// shown as UI. Exists because the Pi root cause (geolocation silently
+// failing on kiosk Chromium) was previously invisible: every failure path
+// swallowed its error with an empty catch. Gated the same way the
+// ?weather= dev override already is.
+const devLog = (...args) => {
+  if (process.env.NODE_ENV === 'development') console.info('[AURA weather]', ...args);
+};
+
 function mapCondition(code, windspeedKmh) {
   if (windspeedKmh >= WIND_CONDITION_THRESHOLD_KMH) return 'WIND';
   if (code === 0 || code === 1) return 'CLEAR';
@@ -61,21 +70,26 @@ export function useLivingWeather() {
               condition: mapCondition(cw.weathercode, cw.windspeed),
             });
           })
-          .catch(() => {});
+          .catch((err) => devLog('Open-Meteo fetch failed', err));
       };
       run();
       intervalId = setInterval(run, WEATHER_REFRESH_MS);
     };
 
-    // Installation location takes priority once an install configures it.
-    // Until then, browser geolocation is a development-only convenience —
-    // not consumer location onboarding.
+    // Installation location takes priority once an install configures it —
+    // normal AURA runtime always has one configured and never depends on
+    // browser geolocation (see constants.js). Geolocation remains only as
+    // a fallback for a developer running without any installation
+    // configured; it's given a finite timeout so a stalled/denied fix can
+    // never block anything else in MIRROR.
     if (INSTALLATION_LATITUDE != null && INSTALLATION_LONGITUDE != null) {
+      devLog('using installation coordinates', INSTALLATION_LATITUDE, INSTALLATION_LONGITUDE);
       fetchAt(INSTALLATION_LATITUDE, INSTALLATION_LONGITUDE);
     } else if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         ({ coords }) => { if (!cancelled) fetchAt(coords.latitude, coords.longitude); },
-        () => {}
+        (err) => devLog('geolocation fallback failed', err),
+        { timeout: 8000, maximumAge: 300000 }
       );
     }
 

@@ -130,6 +130,14 @@ export const ACTIVE_ART_STUDY = 'PAINTING_VENICE'; // change this one line to sw
 // regardless of the local-time schedule — development/testing only, not
 // part of the study's actual behaviour. null = normal scheduled behaviour.
 // See artSchedule.js and MASTER_WORK_FILE.md "Static Art Schedule Study".
+//
+// Also doubles as the technician ART preview override for physical
+// framing review on reference hardware (Dell study) — same mechanism,
+// no second override system. Valid keys (must match ART_STUDIES above
+// exactly): 'EMANATION' | 'LONELY' | 'CAR_LIVE' | 'PAINTING_VENICE' |
+// 'PAINTING_SEA' | 'PAINTING_GARDEN'. Always restore to null before
+// normal scheduled operation — see MASTER_WORK_FILE.md "Technician Art
+// Preview Override".
 export const DEV_ART_STUDY_OVERRIDE = null;
 
 // ── MIRROR composition (Phase 4) ─────────────────────────────────────────────
@@ -142,12 +150,18 @@ export const MIRROR_CONTENT_INSET = 56; // px from screen edge — open question
 // This is the mock track shown when NOW_PLAYING_SOURCE === 'mock'.
 export const MOCK_NOW_PLAYING_TRACK = { title: 'NIGHTS', artist: 'Frank Ocean' };
 
-// Installation location is separate from any visitor-facing setup — these
-// stay null until a real installation configures them. null falls back to
-// browser geolocation, which is a DEVELOPMENT convenience only (no consumer
-// location onboarding is being built here).
-export const INSTALLATION_LATITUDE = null;
-export const INSTALLATION_LONGITUDE = null;
+// Installation location is separate from any visitor-facing setup. AURA is
+// currently installed in Chelmsford, Essex, UK — these are town-level
+// coordinates (not an exact address), explicit and configured here rather
+// than left to the browser. Normal installation runtime must not depend on
+// browser geolocation: the Pi's kiosk Chromium cannot reliably obtain a
+// geolocation fix at all (see MASTER_WORK_FILE.md "Living Atmosphere — Pi
+// Root Cause Resolved"), which is why weather silently never appeared on
+// the Pi despite working on Mac. Browser geolocation remains only as a
+// fallback in weatherProvider.js for a developer running without any
+// installation configured — not part of normal AURA runtime.
+export const INSTALLATION_LATITUDE = 51.7356;
+export const INSTALLATION_LONGITUDE = 0.4798;
 export const WEATHER_REFRESH_MS = 30 * 60 * 1000; // 30 min, matches V0's existing refresh cadence
 export const WIND_CONDITION_THRESHOLD_KMH = 30; // above this, condition becomes WIND regardless of weathercode — open question #8
 export const DEV_WEATHER_OVERRIDE_TEMP = 12; // shown temp when a dev-only ?weather= override is active
