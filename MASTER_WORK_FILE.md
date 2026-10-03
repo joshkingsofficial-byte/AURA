@@ -18,7 +18,10 @@ this file is.
 - The **55-inch LG OLED television** was the first interim large-display
   physical observation. It is not the planned final display.
 - The **planned Dell S2425HSM study is still required** — do not treat the
-  OLED test as a substitute for it.
+  OLED test as a substitute for it. **2026-10-03:** the Dell is now the
+  reference display and has been observed over an extended natural
+  period — see "Physical Study — AURA Dell / Scheduled ART Observation
+  (2026-10-03)".
 - **Reflective-material (two-way mirror) testing has not started.** Every
   finding below involving brightness, spacing, typography weight, or
   timing remains provisional until that testing happens.
@@ -57,8 +60,8 @@ states, deliberately not live-synced to every Mac edit.
 
 | Study | Status | Notes |
 |---|---|---|
-| **Physical Study 01 — Naked Bench** | Begun | First large-display observation used the 55" LG OLED as an interim study, not the planned Dell. The Dell study is still required before this study can be considered complete. |
-| **Physical Study 02 — Reflective Material** | Not started | Two-way mirror material has not yet been physically tested. Do not finalise reflection composition, Trace brightness, typography weight, information opacity, Living Atmosphere brightness, final spacing, final Reveal timing, or final Return timing until this happens. |
+| **Physical Study 01 — Naked Bench** | Dell observation underway | First large-display observation used the 55" LG OLED as an interim study. **2026-10-03:** the Dell S2425HSM is now the reference display and has been observed over an extended natural period — see "Physical Study — AURA Dell / Scheduled ART Observation (2026-10-03)". Not yet formally closed out. |
+| **Physical Study 02 — Reflective Material** | Next up | Two-way mirror material has not yet been physically tested. Do not finalise reflection composition, Trace brightness, typography weight, information opacity, Living Atmosphere brightness, final spacing, final Reveal timing, or final Return timing until this happens. Software should remain stable while this study runs. |
 
 ---
 
@@ -564,6 +567,74 @@ the Pi/Dell itself — only verified on Mac (dev server + production
 build). Per the standing rule, final confirmation that Living Atmosphere
 now actually appears on the physical installation still requires a Pi
 deploy and physical observation, not just this Mac-side evidence.
+
+**2026-10-03 update — resolved.** Living Atmosphere is now physically
+confirmed visible on the Pi/Dell, observed after the explicit
+installation-coordinates deploy. See "Physical Study — AURA Dell /
+Scheduled ART Observation (2026-10-03)" below.
+
+---
+
+## Physical Study — AURA Dell / Scheduled ART Observation (2026-10-03)
+
+**The Dell 24 Plus Monitor S2425HSM is now the current reference display
+for AURA 001 development.** This section records an extended natural
+observation period, not only deliberate technical tests.
+
+- **Scheduled ART programme:** changed successfully according to local
+  time without manual intervention. VENICE, SEA, and GARDEN were each
+  observed through normal scheduled operation (not forced). VENICE, SEA,
+  GARDEN, and LONELY were also individually inspected using the
+  technician `?technicianArt=` preview mechanism.
+- **Framing:** all four currently frame successfully on the AURA Dell.
+  No artwork-specific crop, scale, or object-position correction is
+  currently justified. The three static paintings' full-surface
+  (`cover`) presentation works successfully on the Dell. LONELY's
+  existing `contain` presentation remains appropriate.
+- **Compared with the temporary 55" LG OLED study:** the Dell is less
+  intensely bright; it presents strong contrast and colour; artwork
+  feels concentrated and object-like, rather than diffuse at large
+  scale. The previously perceived Trace-speed problem observed on the LG
+  television (see PR001-04/PR001-06 context) has **not** reproduced on
+  the AURA Dell. **This is recorded only as an observed display-specific
+  difference — it should not be read as the LG television having been
+  technically defective.**
+- **Physical observation now supersedes the earlier concern about
+  painting framing on the TV** (PR001-03/PR001-08 territory) — the same
+  standing rule already established elsewhere in this file: physical
+  display observation overrides laptop/earlier-display assumptions.
+- **The scheduled programme did not feel like a conventional digital
+  slideshow during extended observation.** Recorded as a qualitative
+  impression, not a technical finding — no behaviour changed because of
+  it.
+- **Living Atmosphere is now physically confirmed visible** on the
+  Pi/Dell, following the explicit installation-coordinates deploy (see
+  "Living Atmosphere — Pi Root Cause Resolved" above).
+
+**Current software should now remain stable while Physical Study 02 —
+Reflective Material begins.** No further AURA 001 source changes are
+expected purely because of this observation period.
+
+### Next: Physical Study 02 — Reflective Material
+
+Small samples of two-way mirror glass and/or acrylic, placed over the
+actual AURA Dell. The study must evaluate: ART brightness, colour
+retention, black disappearance, reflection quality, double
+reflection/ghosting, viewing angle, Trace visibility, MIRROR information
+legibility, the Reveal, the Stillness, the Return, and room-light
+sensitivity.
+
+**No final full-size reflective material should be selected solely from
+specifications or online appearance — the physical work decides.**
+
+### Exploratory — possible commissioned digital artwork
+
+Initial conversation has begun around commissioning an original digital
+artwork for AURA. **This is exploratory and not yet a confirmed
+commission.** The intended approach is to give the artist substantial
+creative freedom while allowing them to understand AURA as a physical
+medium before finalising a brief. The artist is not named here; no name
+has been supplied or approved by Minded for the development record.
 
 ---
 
