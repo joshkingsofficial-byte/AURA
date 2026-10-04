@@ -18,7 +18,7 @@ logs/
 
 # Secrets/configs
 config/*.json
-.env
+.env*
 gmail_credentials.json
 gmail_token.pickle
 .cache
