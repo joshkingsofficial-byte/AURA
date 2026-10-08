@@ -77,7 +77,7 @@ export default function MirrorState({ receding = false }) {
       {weather && (
         <div style={{ position: 'absolute', bottom: MIRROR_CONTENT_INSET, right: MIRROR_CONTENT_INSET, textAlign: 'right', ...fadeStyle(1) }}>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <WeatherAtmosphere condition={weather.condition} />
+            <WeatherAtmosphere condition={weather.condition} isNight={weather.isNight} moonPhase={weather.moonPhase} />
           </div>
           <div style={{ fontSize: '40px', fontWeight: 100, color: 'rgba(255,255,255,0.9)', lineHeight: 1, marginTop: '6px' }}>
             {weather.tempC}&deg;

@@ -6,6 +6,7 @@ import {
   WIND_CONDITION_THRESHOLD_KMH,
   DEV_WEATHER_OVERRIDE_TEMP,
 } from './constants';
+import { getMoonPhase } from './moonPhase';
 
 // AURA 001 — living local weather (Phase 4).
 //
@@ -37,21 +38,44 @@ function mapCondition(code, windspeedKmh) {
   return 'RAIN'; // storm/other — folds into RAIN, no dedicated STORM condition this phase
 }
 
+// Pure — exported so day/night logic can be checked directly with
+// controlled inputs, independent of the network/hook. Real sunrise/sunset
+// is the normal path; the hour-based fallback only fires if Open-Meteo's
+// daily block is missing or unparseable, so MIRROR can never crash or
+// freeze on this.
+export function computeIsNight(now, sunriseIso, sunsetIso) {
+  const sunrise = sunriseIso ? new Date(sunriseIso) : null;
+  const sunset = sunsetIso ? new Date(sunsetIso) : null;
+  if (!sunrise || !sunset || isNaN(sunrise.getTime()) || isNaN(sunset.getTime())) {
+    const hour = now.getHours();
+    return hour < 6 || hour >= 20; // fallback only — see function header
+  }
+  return now < sunrise || now >= sunset;
+}
+
 // Returns { tempC, condition } | null (null until the first reading loads).
 export function useLivingWeather() {
   const [weather, setWeather] = useState(null);
 
   useEffect(() => {
-    // Dev-only override: ?aura001=reveal&weather=RAIN — lets a specific
-    // condition be demonstrated/screenshotted without waiting on real
-    // weather or matching installation to it. Gated on NODE_ENV so it
-    // cannot be reached in a production build regardless of URL, and it
-    // skips the real fetch entirely when active.
+    // Dev-only override: ?aura001=reveal&weather=RAIN[&night=1] — lets a
+    // specific condition (and optionally night) be demonstrated/
+    // screenshotted without waiting on real weather, real sunset, or
+    // matching installation to it. Gated on NODE_ENV exactly like the
+    // existing ?technicianArt=/?weather= dev mechanisms elsewhere in
+    // aura001/ — cannot be reached in a production build regardless of
+    // URL, and it skips the real fetch entirely when active.
     if (process.env.NODE_ENV === 'development') {
       const params = new URLSearchParams(window.location.search);
       const override = (params.get('weather') || '').toUpperCase();
       if (WEATHER_CONDITIONS.includes(override)) {
-        setWeather({ tempC: DEV_WEATHER_OVERRIDE_TEMP, condition: override });
+        const isNight = params.get('night') === '1';
+        setWeather({
+          tempC: DEV_WEATHER_OVERRIDE_TEMP,
+          condition: override,
+          isNight,
+          moonPhase: getMoonPhase(),
+        });
         return;
       }
     }
@@ -61,13 +85,19 @@ export function useLivingWeather() {
 
     const fetchAt = (lat, lon) => {
       const run = () => {
-        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+        // Same single Open-Meteo request as before, now also asking for
+        // today's sunrise/sunset (timezone=auto so they correspond to the
+        // installation's local time, not UTC) — no second service, no
+        // second fetch.
+        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=sunrise,sunset&timezone=auto`)
           .then((r) => r.json())
-          .then(({ current_weather: cw }) => {
+          .then(({ current_weather: cw, daily }) => {
             if (cancelled) return;
             setWeather({
               tempC: Math.round(cw.temperature),
               condition: mapCondition(cw.weathercode, cw.windspeed),
+              isNight: computeIsNight(new Date(), daily?.sunrise?.[0], daily?.sunset?.[0]),
+              moonPhase: getMoonPhase(),
             });
           })
           .catch((err) => devLog('Open-Meteo fetch failed', err));
