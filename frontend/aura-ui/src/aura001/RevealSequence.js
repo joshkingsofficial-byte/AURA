@@ -5,6 +5,7 @@ import MirrorSurfacePlaceholder from './MirrorSurfacePlaceholder';
 import AuraTrace from './AuraTrace';
 import MirrorState from './MirrorState';
 import StartupState from './StartupState';
+import TechnicianOverview from './TechnicianOverview';
 import { getScheduledStudyKey } from './artSchedule';
 import { AURA001_STATES, AURA001_DEFAULT_STATE } from './states';
 import {
@@ -94,6 +95,29 @@ export default function RevealSequence() {
   // at the start of ART_RETURNING), never during REVEAL/STILLNESS/TRACE/
   // MIRROR. See artSchedule.js.
   const [lockedStudyKey, setLockedStudyKey] = useState(() => getScheduledStudyKey());
+
+  // Technician Overview preview override (see TechnicianOverview.js) — a
+  // second, independent, in-memory-only layer on top of the real schedule.
+  // `lockedStudyKey`/`setLockedStudyKey` above are the actual scheduler
+  // state and are NEVER read or written by this; `displayedStudyKey` below
+  // is the only place the two are merged, so every ArtState call site shows
+  // the override the instant it's set without the schedule itself ever
+  // changing. Plain useState (not the URL, not localStorage) is deliberate:
+  // a reload has nothing to restore, which is exactly "reloading returns to
+  // normal scheduled behaviour."
+  const [technicianPreviewKey, setTechnicianPreviewKey] = useState(null);
+  const displayedStudyKey = technicianPreviewKey || lockedStudyKey;
+  const showTechnicianOverview = new URLSearchParams(window.location.search).get('technician') === '1';
+
+  // Technician-only startup bat override — same pattern as
+  // technicianPreviewKey above: plain in-memory state, never persisted.
+  // null = the approved production default (BatarangSpinSpotlight, the
+  // rotating Batarang under its stationary spotlight — see StartupState.js),
+  // what every real/production load uses. Set to a GLB path only while a
+  // technician has explicitly chosen the Minded-bat fallback or one of the
+  // TestBatarang orientation references in TechnicianOverview; gone on
+  // reset or reload.
+  const [technicianBatOverride, setTechnicianBatOverride] = useState(null);
 
   const timersRef = useRef([]);
   const addTimer = useCallback((fn, ms) => {
@@ -227,7 +251,7 @@ export default function RevealSequence() {
             className="art-return-fade-in"
             style={{ position: 'fixed', inset: 0, pointerEvents: 'none', '--art-return-ms': `${ART_RETURN_MS}ms` }}
           >
-            <ArtState studyKey={lockedStudyKey} />
+            <ArtState studyKey={displayedStudyKey} />
           </div>
         ) : inStartup ? (
           <div
@@ -238,7 +262,7 @@ export default function RevealSequence() {
               '--art-return-delay-ms': `${STARTUP_MIN_MS - STARTUP_TO_ART_MS}ms`,
             }}
           >
-            <ArtState studyKey={lockedStudyKey} />
+            <ArtState studyKey={displayedStudyKey} />
           </div>
         ) : (
           <div
@@ -250,15 +274,26 @@ export default function RevealSequence() {
               pointerEvents: 'none',
             }}
           >
-            <ArtState studyKey={lockedStudyKey} />
+            <ArtState studyKey={displayedStudyKey} />
           </div>
         )
       )}
 
-      {inStartup && <StartupState />}
+      {inStartup && <StartupState technicianBatModelUrl={technicianBatOverride} />}
 
       {showTrace && <AuraTrace phase={tracePhase} onLeavingComplete={handleTraceLeavingComplete} />}
       {showMirrorInfo && <MirrorState receding={infoReceding} />}
+
+      {showTechnicianOverview && (
+        <TechnicianOverview
+          lockedStudyKey={lockedStudyKey}
+          technicianPreviewKey={technicianPreviewKey}
+          onPreview={setTechnicianPreviewKey}
+          onReset={() => setTechnicianPreviewKey(null)}
+          technicianBatOverride={technicianBatOverride}
+          onSelectBat={setTechnicianBatOverride}
+        />
+      )}
     </div>
   );
 }

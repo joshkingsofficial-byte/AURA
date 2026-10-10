@@ -13,12 +13,22 @@ import { ACTIVE_ART_STUDY, DEV_ART_STUDY_OVERRIDE, ART_STUDIES } from './constan
 // interrupt REVEAL/STILLNESS/TRACE/MIRROR/RETURN — is in RevealSequence.js,
 // not here. This module only answers "what should be showing right now."
 
+// Each hour 0–23 must fall in EXACTLY one block below — verified by
+// inspection, not enforced in code, same as the rest of this file's
+// "simple table, no framework" approach (see header comment). Listed in
+// chronological order for that reason: 00–08 RUBY, 08–12 VENICE, 12–16
+// SEA, 16–20 GARDEN, 20–24 VENICE. RUBY previously shared this exact
+// 00:00–08:00 slot with a second VENICE block (two entries, same range,
+// VENICE only winning because .find() returns the first match) — that
+// ambiguity is gone now: VENICE's two appearances are 08–12 and 20–24
+// only, RUBY owns 00–08 outright, so there is exactly one owner per hour
+// and no entry's outcome depends on array order.
 const SCHEDULE = [
+  { startHour: 0, endHour: 8, study: 'RUBY' },              // 00:00–08:00 — Ruby's own slot, no longer shared with VENICE
   { startHour: 8, endHour: 12, study: 'PAINTING_VENICE' },
   { startHour: 12, endHour: 16, study: 'PAINTING_SEA' },
   { startHour: 16, endHour: 20, study: 'PAINTING_GARDEN' },
   { startHour: 20, endHour: 24, study: 'PAINTING_VENICE' }, // 20:00–24:00
-  { startHour: 0, endHour: 8, study: 'PAINTING_VENICE' },   // 00:00–08:00 (same period, split around midnight)
 ];
 
 // Technician Art Preview, physical review mode (see MASTER_WORK_FILE.md

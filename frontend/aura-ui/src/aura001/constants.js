@@ -7,14 +7,57 @@
 // treated as final without that testing.
 
 // ── Cold Start (Phase 5.5) ───────────────────────────────────────────────────
-// POWER/APPLICATION START -> STARTUP -> ART. STARTUP shows only a near-black
-// background (MirrorSurfacePlaceholder, already always-mounted) and the
-// fading "A U R A" wordmark — no Trace, no clock/weather/music, no loading
-// indicator of any kind. It is NOT gated on any network/API readiness; these
-// constants are a fixed dev-prototype stand-in for "local resources ready."
-export const STARTUP_WORDMARK_FADE_MS = 800; // wordmark fades in at boot — open question #7
-export const STARTUP_MIN_MS = 2000; // total floor duration in STARTUP before ART, including the crossfade below — open question #2
-export const STARTUP_TO_ART_MS = 1000; // final crossfade from startup surface to sovereign ART — open question #2
+// POWER/APPLICATION START -> STARTUP -> ART. STARTUP is a single fixed
+// composition on one shared vertical axis — AURA wordmark, "by MINDED",
+// the physical Minded bat (BatReveal.js), "Artwork starting", top to
+// bottom — not a sequence of elements replacing each other. The bat is
+// the primary visual: it begins embedded in near-darkness, a grazing
+// light reveals its relief, then it stays put, dim and settled, for the
+// rest of STARTUP while the wordmark/byline/subtitle resolve above and
+// below it. Everything fades out together at the end. Still no Trace, no
+// clock/weather/music, no spinner — and still NOT gated on any network/
+// API readiness; these constants are a fixed dev-prototype stand-in for
+// "local resources ready."
+//
+// STARTUP_WORDMARK_FADE_MS and STARTUP_TO_ART_MS are unchanged in value
+// from before the bat was added. STARTUP_MIN_MS is the sum of every phase
+// in order: dark hold -> light reveal -> bat hold (bat settles, dim, and
+// simply stays — it does not fade out here) -> wordmark+byline fade in
+// (STARTUP_WORDMARK_FADE_MS) -> subtitle delay -> subtitle fade-in ->
+// final hold (everything visible together) -> STARTUP_TO_ART_MS (shared
+// fade-out of all four elements, including the bat, as ART crossfades in).
+export const STARTUP_BAT_DARK_MS = 500;
+export const STARTUP_BAT_REVEAL_MS = 2200;
+export const STARTUP_BAT_HOLD_MS = 1100;
+export const STARTUP_WORDMARK_FADE_MS = 800;
+export const STARTUP_SUBTITLE_DELAY_MS = 500;
+export const STARTUP_SUBTITLE_FADE_MS = 600;
+export const STARTUP_FINAL_HOLD_MS = 5300; // extended so the complete composition (AURA/by MINDED/Batarang/Artwork starting) holds together longer before the shared fade-out -- the only value changed to reach ~12s total, see STARTUP_MIN_MS below
+export const STARTUP_TO_ART_MS = 1000;
+export const STARTUP_MIN_MS =
+  STARTUP_BAT_DARK_MS +
+  STARTUP_BAT_REVEAL_MS +
+  STARTUP_BAT_HOLD_MS +
+  STARTUP_WORDMARK_FADE_MS +
+  STARTUP_SUBTITLE_DELAY_MS +
+  STARTUP_SUBTITLE_FADE_MS +
+  STARTUP_FINAL_HOLD_MS +
+  STARTUP_TO_ART_MS; // computed, not hand-picked — see phase breakdown above
+export const STARTUP_BYLINE_OPACITY = 0.4; // "by MINDED" — deliberately below WORDMARK_OPACITY so it reads as subordinate, not a second wordmark — open question #7
+export const STARTUP_BYLINE_GAP_PX = 14; // px between the wordmark's lowest stroke and the byline — open question #7
+// Explicit presentation scale, not derived from the model's bounding box —
+// BatReveal.js's camera fits the bat to fill WHATEVER box this ratio
+// allocates (that's a framing-correctness fix, not a size decision). This
+// constant is the actual size decision. It was pushed to 0.78 while a
+// camera-framing bug was independently rendering the bat at only ~15% of
+// its own container, which made even that container size read as small;
+// once the framing bug was fixed the same 0.78 filled most of the
+// viewport. 0.28 targets the originally-intended ~25-30% of viewport
+// width now that the container is actually filled correctly.
+export const STARTUP_BAT_WIDTH_RATIO = 0.28;
+export const STARTUP_BAT_GAP_PX = 40; // px between the byline and the bat's top edge — restored toward the original breathing room now that the bat is small again — open question #7
+export const STARTUP_SUBTITLE_OPACITY = 0.3; // "Artwork starting" — the smallest/subtlest element in the composition — open question #7
+export const STARTUP_SUBTITLE_GAP_PX = 28; // px between the bat's bottom edge and "Artwork starting" — restored toward the original breathing room now that the bat is small again — open question #7
 
 // ── Reveal / Stillness / Trace-in (ART → MIRROR) ────────────────────────────
 export const REVEAL_MS = 1200; // ART recedes, reflection emerges — open question #2
@@ -122,6 +165,14 @@ export const ART_STUDIES = {
     fit: 'cover',
     label: 'ART STUDY 004C — GARDEN',
   },
+  RUBY: {
+    path: '/aura001-dev/ruby-study.jpg',
+    type: 'image',
+    fit: 'cover',
+    label: 'ART STUDY 005 — RUBY',
+    artist: 'Ruby',
+    title: 'To be high is to be fly',
+  },
 };
 export const ACTIVE_ART_STUDY = 'PAINTING_VENICE'; // change this one line to switch studies — temporarily PAINTING_VENICE for testing
 
@@ -135,9 +186,12 @@ export const ACTIVE_ART_STUDY = 'PAINTING_VENICE'; // change this one line to sw
 // framing review on reference hardware (Dell study) — same mechanism,
 // no second override system. Valid keys (must match ART_STUDIES above
 // exactly): 'EMANATION' | 'LONELY' | 'CAR_LIVE' | 'PAINTING_VENICE' |
-// 'PAINTING_SEA' | 'PAINTING_GARDEN'. Always restore to null before
-// normal scheduled operation — see MASTER_WORK_FILE.md "Technician Art
-// Preview Override".
+// 'PAINTING_SEA' | 'PAINTING_GARDEN' | 'RUBY'. Always restore to null
+// before normal scheduled operation — see MASTER_WORK_FILE.md
+// "Technician Art Preview Override". (The in-page Technician Overview
+// panel — see TechnicianOverview.js — is a separate, session-only
+// preview layer in RevealSequence.js; it never reads or writes this
+// constant or the URL param below.)
 export const DEV_ART_STUDY_OVERRIDE = null;
 
 // ── MIRROR composition (Phase 4) ─────────────────────────────────────────────
